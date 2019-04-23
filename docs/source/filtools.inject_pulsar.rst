@@ -1,6 +1,11 @@
 filtools\.inject\_pulsar package
 ================================
 
+.. automodule:: filtools.inject_pulsar
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Submodules
 ----------
 
@@ -29,10 +34,3 @@ filtools\.inject\_pulsar\.pulse\_models module
     :show-inheritance:
 
 
-Module contents
----------------
-
-.. automodule:: filtools.inject_pulsar
-    :members:
-    :undoc-members:
-    :show-inheritance:

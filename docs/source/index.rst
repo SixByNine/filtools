@@ -8,9 +8,15 @@ Welcome to filtools's documentation!
 
 .. toctree::
    :maxdepth: 4
-   :caption: Table of Contents
+   :caption: User Guide
 
-   modules
+   introduction
+   installation
+
+.. toctree::
+   :maxdepth: 4
+   :caption: Class desriptions
+
    filtools
    filtools.inject_pulsar
 
