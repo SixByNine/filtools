@@ -52,8 +52,7 @@ class simple_propagation_model:
         :returns:  Average flux density between t1 and t2.
         """
 
-        spec = np.zeros(self.nchan,dtype=np.float32)
-        spec += self.input(t1-self.dm_delays_start, t2-self.dm_delays_end, mjdref)
+        spec = self.input(t1-self.dm_delays_start, t2-self.dm_delays_end, mjdref)
         return spec
 
 class simple_scattering_model:
@@ -102,10 +101,16 @@ class simple_scattering_model:
         :returns:  Average flux density between t1 and t2.
         """
 
-        spec = self.input_model(t1,t2,mjdref)
-        self.store += spec
-        spec = self.store * self.rconst
-        self.store *= self.const
+        spec = self.input(t1,t2,mjdref)
+        if len(spec.shape) == 1:
+            self.store += spec
+            spec = self.store * self.rconst
+            self.store *= self.const
+        else:
+            for isamp in range(spec.shape[0]):
+                self.store += spec[isamp]
+                spec[isamp] = self.store * self.rconst
+                self.store *= self.const
         return spec
         
 

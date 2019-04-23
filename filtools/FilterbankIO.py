@@ -111,6 +111,8 @@ class FilterbankIO:
     def total_bytes(self):
         return os.fstat(self.file.fileno()).st_size
     
+    def total_channels(self):
+        return self.header['nchans']
     def total_samples(self):
         header_size = self.data_position - self.header_position
         return int(8*(self.total_bytes()-header_size) / self.header['nchans'] / self.header['nbits'])

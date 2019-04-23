@@ -81,6 +81,8 @@ class sinusoid_pulse_model:
         p1 = self.phase_model.get_phase(t1,mjdref)
         p2 = self.phase_model.get_phase(t2,mjdref)
 
+
+
         #spin_freq = self.phase_model.get_freq(t2)
 
         # Integrate cos(2*pi*x).dx between p1 and p2
@@ -89,6 +91,7 @@ class sinusoid_pulse_model:
 
         # Get back to flux units
         val /= (p2-p1)
+
 
         # This is a simple model that has no frequency structure.
 

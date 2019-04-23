@@ -59,7 +59,8 @@ def ft_inject_pulsar(argv):
     freqs=infile.frequency_table()
     read_block = infile.get_reader()
 
-    # Set up phase predictor
+    # Set up phase predictor. This will tell the pulse model what phase to model
+    # For each time step.
     if args.pred is None:
         if args.pepoch is None:
             pepoch=infile.mjd_at_sample(infile.total_samples()//2)
@@ -69,23 +70,27 @@ def ft_inject_pulsar(argv):
     else:
         raise Exception("Pred model not implemeted yet")
 
-    # Set up pulse model
+    # Set up pulse model. There are special keywords here, otherwise assume it is a file.
     if args.pulse == "sin":
-        pulse_model=ip.sin_pulse_model(phase_model=phase_model,freq=freqs)
+        pulse_model=ip.sinusoid_pulse_model(phase_model=phase_model,freq=freqs)
     elif args.pulse == "delta":
         pulse_model=ip.delta_pulse_model(phase_model=phase_model,freq=freqs)
     else:
         raise Exception("Pulse model with file not implemented yet")
 
     # Set up ISM
-
     if args.scatter_time > 0:
-        scatter_model = ip.simple_scattering_model(input=ism_model,freq=freqs,t_scatt=args.scatter_time,dx=infile.sample_interval(), scatt_idx=args.scatter_idx,ref_freq=args.scatter_reffreq)
+        # If we want to include scattering, we need a scattering model between
+        # The pulse model and the dispersion model
+        scatter_model = ip.simple_scattering_model(input=pulse_model,freq=freqs,t_scatt=args.scatter_time,dx=infile.sample_interval(), scatt_idx=args.scatter_index,ref_freq=args.scatter_reffreq)
     else:
+        # Otherwise, we don't do any scattering.
         scatter_model = pulse_model
 
+    # This will do nothing if dm is zero, so always include it.
     ism_model = ip.simple_propagation_model(input=scatter_model, freq=freqs, dm=args.dm, intra_chan=args.intrachan)
 
+    # Just to re-name the variable for the final model
     inject_model = ism_model
 
     # Set up telecsope
@@ -124,18 +129,31 @@ def ft_inject_pulsar(argv):
         block = read_block(256)
         if block.shape[0]==0:
             break
-        for i in range(block.shape[0]):
-            bin_start = infile.seconds_since(isamp,mjdref)
-            bin_end = infile.seconds_since(isamp+1,mjdref)
+        if False:
+            for i in range(block.shape[0]):
+                bin_start = infile.seconds_since(isamp,mjdref).reshape(-1,1)
+                bin_end = infile.seconds_since(isamp+1,mjdref).reshape(-1,1)
 
-            spec = args.flux*inject_model(bin_start,bin_end,mjdref)
+                spec = args.flux*inject_model(bin_start,bin_end,mjdref)
 
-            spec = integerise(scaler.to_file_units(spec))
+                spec = integerise(scaler.to_file_units(spec))
 
+                block[i] += spec[0]
 
-            block[i] += spec
+                isamp += 1
+        else:
+                bsamp=block.shape[0]
+                samps = np.arange(isamp,isamp+bsamp,dtype=int)
+                bin_start = np.repeat(infile.seconds_since(samps,mjdref),repeats=infile.total_channels()).reshape(bsamp,-1)
+                bin_end = np.repeat(infile.seconds_since(samps+1,mjdref),repeats=infile.total_channels()).reshape(bsamp,-1)
 
-            isamp += 1
+                spec = args.flux*inject_model(bin_start,bin_end,mjdref)
+
+                spec = integerise(scaler.to_file_units(spec))
+
+                block += spec
+
+                isamp += bsamp
 
         write_block(block)
     ofil.close()
