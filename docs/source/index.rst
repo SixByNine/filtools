@@ -7,8 +7,13 @@ Welcome to filtools's documentation!
 ====================================
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 4
+   :caption: Table of Contents
+
+   modules
+   filtools
+   filtools.inject_pulsar
+
 
 
 

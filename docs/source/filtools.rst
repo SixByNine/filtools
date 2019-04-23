@@ -12,10 +12,10 @@ filtools\.FilterbankIO module
     :undoc-members:
     :show-inheritance:
 
-filtools\.inject\_pulsar module
--------------------------------
+filtools\.data\_scaling module
+------------------------------
 
-.. automodule:: filtools.inject_pulsar
+.. automodule:: filtools.data_scaling
     :members:
     :undoc-members:
     :show-inheritance:

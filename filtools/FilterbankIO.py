@@ -115,6 +115,12 @@ class FilterbankIO:
         header_size = self.data_position - self.header_position
         return int(8*(self.total_bytes()-header_size) / self.header['nchans'] / self.header['nbits'])
         
+    def sample_interval(self):
+        return self.header['tsamp']
+
+    def channel_bandwidth(self):
+        return self.header['foff']
+
     def get_reader(self):
         
         def read_block_32bit(nsamples,dtype=np.float32):

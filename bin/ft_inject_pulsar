@@ -1,0 +1,147 @@
+#!/usr/bin/env python
+
+from __future__ import print_function, division
+
+
+import sys
+import argparse
+
+import filtools
+import filtools.inject_pulsar as ip
+import numpy as np
+
+
+def ft_inject_pulsar(argv):
+    parser=argparse.ArgumentParser(description="Inject a pulsar signal into a filterbank file")
+
+    
+    
+    parser.add_argument('input', type=str, help="Input filterbank file")
+    parser.add_argument('-o','--output',type=str, help="Output file name",required=True)
+
+    group=parser.add_argument_group('Pulse profile settings')
+    group.add_argument('-p','--pulse', type=str, help="Pulse model type (sin, delta), or profile file to load",default='delta')
+    group.add_argument('-S','--flux', type=float, help="Phase averatge flux density (Jy)",default=1.0)
+    group.add_argument('-i','--sidx', type=float, help="Spectral index",default=0.0)
+    group.add_argument('--sidx-reffreq', type=float, help="Spectral index reference frequency (1400 MHz)",default=1400.0)
+    group.add_argument('-E','--pulse-sigma', type=float, help="'sigma' for log-normal pulse intensity distribution",default=0.0)
+
+    group=parser.add_argument_group('Pulse period settings')
+    group.add_argument('--pred', type=str, help="Predictor or polyco for pulsar")
+    group.add_argument('--f0', type=float, help="Pulse frequency for simple spin model",default=10.0)
+    group.add_argument('--f1', type=float, help="Pulse freq 1st derivative for simple spin model",default=0.0)
+    group.add_argument('--f2', type=float, help="Pulse freq 2nd derivative for simple spin model",default=0.0)
+    group.add_argument('--accn', type=float, help="Pulse accelerationfor simple spin model (overrides F1)",default=None)
+    group.add_argument('--pepoch', type=float, help="Epoch of somple spin model (default=centre)",default=None)
+
+
+    group=parser.add_argument_group('Propagtion settings')
+    group.add_argument('-D','--dm', type=float, help="DM of injected pulsar",default=0.0)
+    group.add_argument('-x','--no-intra-chan-dm', action='store_false', help="Disable intra-channel DM",dest='intrachan')
+    group.add_argument('-c','--scatter-time', type=float, help="Scattering timescale",default=0.0)
+    group.add_argument('-X','--scatter-index', type=float, help="Scattering index",default=-4.0)
+    group.add_argument('--scatter-reffreq', type=float, help="Scattering index reference frequency (default=1400MHz)",default=1400.0)
+
+    group=parser.add_argument_group('Telescope settings')
+    group.add_argument('-T','--site', type=str, help="Telescope description to use.",default=None)
+    group.add_argument('--gain', type=str, help="Simulated telescope gain (K/Jy)",default=1.0)
+    group.add_argument('--tsys', type=str, help="Simulated telescope tsys (K)",default=25.0)
+    group.add_argument('--rms', type=float, help="RMS in input data (default=auto)",default=None)
+    group.add_argument('--offset', type=float, help="Offset in input data default=auto)",default=None)
+    args=parser.parse_args(argv[1:])
+
+    print(args)
+
+    # First try to open the input file.
+    infile = filtools.FilterbankIO()
+    infile.read_header(args.input)
+    print(infile.header)
+    freqs=infile.frequency_table()
+    read_block = infile.get_reader()
+
+    # Set up phase predictor
+    if args.pred is None:
+        if args.pepoch is None:
+            pepoch=infile.mjd_at_sample(infile.total_samples()//2)
+        else:
+            pepoch=args.pepoch
+        phase_model = ip.simple_phase_model(epoch=pepoch,f0=args.f0,f1=args.f1,f2=args.f2,accn=args.accn)
+    else:
+        raise Exception("Pred model not implemeted yet")
+
+    # Set up pulse model
+    if args.pulse == "sin":
+        pulse_model=ip.sin_pulse_model(phase_model=phase_model,freq=freqs)
+    elif args.pulse == "delta":
+        pulse_model=ip.delta_pulse_model(phase_model=phase_model,freq=freqs)
+    else:
+        raise Exception("Pulse model with file not implemented yet")
+
+    # Set up ISM
+
+    if args.scatter_time > 0:
+        scatter_model = ip.simple_scattering_model(input=ism_model,freq=freqs,t_scatt=args.scatter_time,dx=infile.sample_interval(), scatt_idx=args.scatter_idx,ref_freq=args.scatter_reffreq)
+    else:
+        scatter_model = pulse_model
+
+    ism_model = ip.simple_propagation_model(input=scatter_model, freq=freqs, dm=args.dm, intra_chan=args.intrachan)
+
+    inject_model = ism_model
+
+    # Set up telecsope
+
+    rms=args.rms
+    offset=args.offset
+    if rms is None or offset is None:
+        block = read_block(2048)
+        if rms is None:
+            rms=np.std(block)
+        if offset is None:
+            offset = np.mean(block)
+        infile.seek_to_sample(0)
+            
+    print("RMS: {:.2f} offset: {:.2f}".format(rms,offset))
+    scaler = filtools.FluxScale()
+    scaler.tsys=args.tsys
+    scaler.offset=offset
+    scaler.rms=rms
+    if args.site is None:
+        scaler.set_gain_from_physical(gain=args.gain,tsamp=infile.sample_interval())
+    else:
+        scaler.set_gain_from_file("{}.yaml".format(args.site.lower()))
+    scaler.init(bw=infile.channel_bandwidth(),tsamp=infile.sample_interval())
+
+    # Start working on the ouput file
+    ofil=infile.clone_header()
+    ofil.write_header(args.output)
+    write_block = ofil.get_writer()
+
+    integerise = filtools.SimpleIntegerise()
+# Begin working on the data
+    mjdref=infile.mjd_at_sample(0)
+    isamp=0
+    while True:
+        block = read_block(256)
+        if block.shape[0]==0:
+            break
+        for i in range(block.shape[0]):
+            bin_start = infile.seconds_since(isamp,mjdref)
+            bin_end = infile.seconds_since(isamp+1,mjdref)
+
+            spec = args.flux*inject_model(bin_start,bin_end,mjdref)
+
+            spec = integerise(scaler.to_file_units(spec))
+
+
+            block[i] += spec
+
+            isamp += 1
+
+        write_block(block)
+    ofil.close()
+
+
+
+if __name__ == "__main__":
+    ft_inject_pulsar(sys.argv)
+

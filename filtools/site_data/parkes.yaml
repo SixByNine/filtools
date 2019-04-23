@@ -1,0 +1,4 @@
+diameter: 64
+tsys: 25
+efficiency: 0.55
+n_antenna: 1
