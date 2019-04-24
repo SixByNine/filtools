@@ -19,18 +19,34 @@ class FilterbankIO:
         inputfile.read_header("example.fil")
         data = inputfile.read_block(1024) # Reads 1024 samples from the file
 
+    .. note::
+        Currently :class:`FilterbankIO` supports sigproc data files with the following properties:
+         * Single IF (i.e. single polarisation)
+         * Fixed channel bandwidth (i.e. each channel has same bandwidth/offset)
+        And, data type is one of: 
+         * 1-bit unsigned integer
+         * 2-bit unsigned integer
+         * 4-bit unsigned integer
+         * 8-bit unsigned integer
+         * 16-bit unsigned integer
+         * 32-bit floating point
+ 
 
     .. py:attribute:: header
 
-        Direct access to the sigproc header parameters
+        The header dict can be used to provide direct access to the sigproc header parameters. Parameters changed here
+        before calling :meth:`write_header` can change the ouput header parameters. However, it is usually best to access
+        information about the data using the other methods provided below, as the structure can be re-used for other data
+        types.
     
+       
     """
-    inttypes = ['machine_id', 'telescope_id', 'data_type', 'nchans',\
+    _inttypes = ['machine_id', 'telescope_id', 'data_type', 'nchans',\
                     'nbits', 'nifs', 'scan_number', 'barycentric','pulsarcentric',\
                     'nbeams', 'ibeam']
-    strtypes = ['source_name','rawdatafile']
-    dbltypes = ['tstart','tsamp','fch1','foff','refdm','az_start','za_start','src_raj','src_dej']
-    chrtypes = ['signed']
+    _strtypes = ['source_name','rawdatafile']
+    _dbltypes = ['tstart','tsamp','fch1','foff','refdm','az_start','za_start','src_raj','src_dej']
+    _chrtypes = ['signed']
     
     def __init__(self):
         self.header={}
@@ -72,16 +88,16 @@ class FilterbankIO:
             while key != "HEADER_END":
                 if self._debug:
                     print("FilterbankIO: Got '{}'".format(key))
-                if key in FilterbankIO.inttypes:
+                if key in FilterbankIO._inttypes:
                     self.header[key] = np.fromfile(self.file,dtype=np.int32,count=1)[0]
                     bytes_read += 4
-                elif key in FilterbankIO.strtypes:
+                elif key in FilterbankIO._strtypes:
                     self.header[key] = read_string(self.file)
                     bytes_read += len(self.header[key])+4
-                elif key in FilterbankIO.dbltypes:
+                elif key in FilterbankIO._dbltypes:
                     self.header[key] = np.fromfile(self.file,dtype=np.float64,count=1)[0]
                     bytes_read += 8
-                elif key in FilterbankIO.chrtypes:
+                elif key in FilterbankIO._chrtypes:
                     self.header[key] = np.fromfile(self.file,dtype=np.int8,count=1)[0]
                     bytes_read += 1
                 else:
@@ -119,13 +135,13 @@ class FilterbankIO:
         write_string(self.file,"HEADER_START")
         for key in self.header:
             write_string(self.file,key)
-            if key in FilterbankIO.inttypes:
+            if key in FilterbankIO._inttypes:
                 self.file.write(struct.pack("i",self.header[key]))
-            elif key in FilterbankIO.strtypes:
+            elif key in FilterbankIO._strtypes:
                 write_string(self.file,self.header[key])
-            elif key in FilterbankIO.dbltypes:
+            elif key in FilterbankIO._dbltypes:
                 self.file.write(struct.pack("d",self.header[key]))
-            elif key in FilterbankIO.chrtypes:
+            elif key in FilterbankIO._chrtypes:
                 self.file.write(struct.pack("b",self.header[key]))
             else:
                 raise Exception("Cannot understand filterbank header for writing, key '{}' not understood".format(key))
@@ -144,45 +160,94 @@ class FilterbankIO:
         ret.header = self.header.copy()
         return ret
 
+    def seconds_since_start(self,sample):
+        """ Get the number of seconds since start of observation at sample number ``sample``."""
+        return sample * self.header['tsamp']
+
     def seconds_since(self,sample, mjdref):
         """
         Get the number of seconds since ``mjdref`` at sample number ``sample``.
+
+        :param sample: Integer sample number
+        :param refmjd: Reference mjd
+        :returns: seconds since ``mjdref`` at sample ``sample``
         """
-        return 86400.0*(self.header['tstart'] - mjdref) + sample * self.header['tsamp']
+        return 86400.0*(self.header['tstart'] - mjdref) + self.seconds_since_sart(sample)
 
     def mjd_at_sample(self,sample):
+        """Get the MJD at given sample number"""
         return self.header['tstart'] + (sample * self.header['tsamp'])/86400.0
     
     def frequency_table(self):
+        """Get an array of centre frequency of each channel"""
         return np.linspace(self.header['fch1'],self.header['fch1'] + self.header['nchans']*self.header['foff'],self.header['nchans'],endpoint=False)
 
     def seek_to_sample(self,sample):
+        """
+        Position the file pointer at given sample number (index from zero).
+
+        The next call to :meth:`read_block` or :meth:`write_block` will start at the given sample. E.g.
+
+        .. code-block:: python
+
+            fil.seek_to_sample(100)
+            block = fil.read_block(128) # block[0] is sample number 100
+        """
         bytes_from_data_start = (sample * self.header['nchans'] * 8)//self.header['nbits']
         self.file.seek(self.data_position+bytes_from_data_start,os.SEEK_SET)
     
     def current_position(self):
+        """
+        Print the current position of the file pointer in samples.
+
+        The next call to :meth:`read_block` or :meth:`write_block` will read or write from this sample.
+        """
         return ((self.file.tell()-self.data_position) * self.header['nbits']) // (8*self.header['nchans'])
         
     def total_bytes(self):
+        """Compute the total number of bytes in the file"""
         return os.fstat(self.file.fileno()).st_size
     
     def total_channels(self):
+        """Compute the total number of frequency channels in the file"""
         return self.header['nchans']
+
     def total_samples(self):
+        """Compute the total number of samples in the file"""
         header_size = self.data_position - self.header_position
         return int(8*(self.total_bytes()-header_size) / self.header['nchans'] / self.header['nbits'])
         
     def sample_interval(self):
+        """Return the time between each sample"""
         return self.header['tsamp']
 
     def channel_bandwidth(self):
+        """Return the channel bandwidth"""
         return self.header['foff']
 
     def read_block(self,nsamples,dtype=np.float32):
+        """
+        Read a block of data. 
+
+        This will read up to ``nsamples`` from the file, returning a 2-d array indexed first by sample and then by channel.  
+        i.e. the shape of the returned array will be (nsamples_read,nchannels).
+
+        If the file has reached the end of file, then less than nsamples will be read, and if past the end of the file, an array of size (0,nchannels) will be returned.
+
+        .. note::
+            On first call this method is dynamically replaced using :meth:`get_reader` to define an optimised verison of the reader method.
+            This should be invisiable to most users.
+
+        :param nsamples: The number of samples to read.
+        :param dtype: A numpy compatible data type. Data will be converted to this type using the astype numpy method, and should be at least large enough to hold the read data types.
+        :returns: A 2-d numpy array of requested type.
+        """
+
         self.read_block=self.get_reader()
         return self.read_block(nsamples,dtype)
 
     def get_reader(self):
+        """This method returns a function optimised to read the input data.`"""
         
         def read_block_32bit(nsamples,dtype=np.float32):
             nchans=  self.header['nchans']
@@ -261,10 +326,25 @@ class FilterbankIO:
         
 
     def write_block(self,block):
+        """
+        Write a block of data to a file opened for writing.
+
+        The data block should be a numpy array in the same format as would be obtained from :meth:`read_block`.
+        The data will be truncated and cast to the required type to write to the file using the ndarray.astype method from numpy.
+
+        The block should have shape (nsamples,nchannels), where nsamples is the number of samples to write.
+
+        :param block: A 2-d numpy array to write.
+
+        .. note::
+            On first call this this method is dynamically replaced using :meth:`get_writer` to define an optimised verison of the writer method.
+            This should be invisiable to most users.
+        """
         self.write_block = self.get_writer()
         return self.write_block(block)
 
     def get_writer(self):
+        """Returns an optimised write function. Used by :meth:`write_block`."""
         def write_block_32bit(block):
             raw = block.flatten(order='C').astype('float32')
             self.file.write(raw.tobytes())
@@ -344,6 +424,7 @@ class FilterbankIO:
             
     
     def close(self):
+        """Close the input file, reset the read/write state of the :class:`FilterbankIO` object"""
         if self.state>0:
             self.file.close()
             self.state=0

@@ -1,0 +1,53 @@
+#!/usr/bin/env python
+from __future__ import print_function
+import filtools
+import numpy as np
+import argparse
+import sys
+
+parser=argparse.ArgumentParser(description="""Fix a filterbank style file that is encoded as signed data to unsigned data.
+This program is intended to fix cases where a filterbank file has been written by some external program as *signed* 8-bit values
+rather than the typical unsigned 8-bit values. The new file is written as unsigned.
+""")
+
+parser.add_argument('input', type=str, help="Input filterbank file, containing signed 8-bit numbers")
+parser.add_argument('output', type=str, help="Output filterbank file, writen as unsigned 8-bit numbers")
+parser.add_argument('-S','--no-signed', action='store_true', help="Don't write an UNSIGNED entry in the output file")
+
+args = parser.parse_args()
+
+input = filtools.FilterbankIO()
+input.read_header(args.input)
+input.header['signed']=1 # Force this to be unsigned
+
+if input.header['nbits'] != 8:
+    print("Error: Can only operate on 8-bit data")
+    sys.exit(1)
+
+
+print("Read header")
+output = input.clone_header()
+
+
+if args.no_signed:
+    # Remove the "signed/unsigned" flag, needed for some older software
+    del output.header['signed']
+
+output.write_header(args.output)
+
+mjdref=input.mjd_at_sample(0)
+isample=0
+while True:
+    print("\r{: 10.2f}".format(input.seconds_since(isample,mjdref)),end="")
+    block = input.read_block(1024,dtype=np.uint8)
+    if block.shape[0] == 0 :
+        break
+    block += 128
+    output.write_block(block)
+    isample+=block.shape[0]
+
+print("")
+
+output.close()
+
+
