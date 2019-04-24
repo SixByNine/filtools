@@ -36,5 +36,5 @@ class simple_phase_model:
     def get_frequency(self,time,mjdref):
         """Get the pulse frequency at time in seconds relative to refmjd"""
         t = time - (self.epoch-mjdref)*86400.0
-        return self.f0*t + self.f1*t + self.f2*t*t/2.0
+        return self.f0 + self.f1*t + self.f2*t*t/2.0
 

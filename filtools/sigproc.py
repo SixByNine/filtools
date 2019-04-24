@@ -4,6 +4,22 @@ import os
 import numpy as np
 
 class FilterbankIO:
+    """
+    This class deals with reading from and writing to sigproc filterbank files.
+
+    To read a filterbank file, first set up a new :class:`FilterbankIO` object, and use the
+    :meth:`read_header` method to read the header parameters. The FilterbankIO object is then ready to 
+    be used for reading. To read the file, we use the :meth:`read_block` method to read samples from the file.
+
+    Example:
+    
+    .. code-block:: python
+
+        inputfile = filtools.FilterbankIO()
+        inputfile.read_header("example.fil")
+        data = inputfile.read_block(1024) # Reads 1024 samples from the file
+    
+    """
     inttypes = ['machine_id', 'telescope_id', 'data_type', 'nchans',\
                     'nbits', 'nifs', 'scan_number', 'barycentric','pulsarcentric',\
                     'nbeams', 'ibeam']
@@ -15,8 +31,24 @@ class FilterbankIO:
         self.header={}
         self._debug=False
         self.state=0
+        self._read_block = self.read_block
+        self._write_block=self.write_block
+
     
     def read_header(self,filename):
+        """
+        Read header from sigproc filterbank file
+
+        :param filename: filename to read
+        :type filename: str
+        :returns: Number of bytes read (i.e. size of header)
+
+        This method will also put the :class:`FilterbankIO` object in a state for reading the 
+        file, i.e. enabling the :meth:`read_block` method.
+
+        Header parameters can be accessed by the methods of the :class:`FilterbankIO` object, or
+        by direct interface with the sigproc API using the :data:`header` dict member.
+        """
         def read_string(file):
             nchar = np.fromfile(file,dtype=np.int32,count=1)[0]
             if nchar < 1 or nchar > 80:
@@ -123,6 +155,10 @@ class FilterbankIO:
     def channel_bandwidth(self):
         return self.header['foff']
 
+    def read_block(self,dtype=np.float32):
+        self.read_block=self.get_reader()
+        return self.read_block(dtype)
+
     def get_reader(self):
         
         def read_block_32bit(nsamples,dtype=np.float32):
@@ -200,6 +236,11 @@ class FilterbankIO:
         else:
             raise Exception("File not opened for reading")
         
+
+    def write_block(self,block):
+        self.write_block = self.get_writer()
+        return self.write_block(block)
+
     def get_writer(self):
         def write_block_32bit(block):
             raw = block.flatten(order='C').astype('float32')
@@ -283,3 +324,5 @@ class FilterbankIO:
         if self.state>0:
             self.file.close()
             self.state=0
+        self.write_block=self._write_block
+        self.read_block = self._read_block

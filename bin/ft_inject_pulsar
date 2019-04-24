@@ -57,7 +57,7 @@ def ft_inject_pulsar(argv):
     infile.read_header(args.input)
     print(infile.header)
     freqs=infile.frequency_table()
-    read_block = infile.get_reader()
+    #read_block = infile.get_reader()
 
     # Set up phase predictor. This will tell the pulse model what phase to model
     # For each time step.
@@ -98,7 +98,7 @@ def ft_inject_pulsar(argv):
     rms=args.rms
     offset=args.offset
     if rms is None or offset is None:
-        block = read_block(2048)
+        block = infile.read_block(2048)
         if rms is None:
             rms=np.std(block)
         if offset is None:
@@ -126,7 +126,7 @@ def ft_inject_pulsar(argv):
     mjdref=infile.mjd_at_sample(0)
     isamp=0
     while True:
-        block = read_block(256)
+        block = infile.read_block(256)
         if block.shape[0]==0:
             break
         if False:

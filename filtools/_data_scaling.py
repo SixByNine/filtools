@@ -69,3 +69,4 @@ class FluxScale:
             print(params)
             raise Exception("Cannot load telescope info from '{}' or '{}'",file,lfile)
 
+    
