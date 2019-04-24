@@ -1,0 +1,14 @@
+usage: ft_convert_signed_to_unsigned [-h] [-S] input output
+
+Fix a filterbank style file that is encoded as signed data to unsigned data.
+This program is intended to fix cases where a filterbank file has been written
+by some external program as *signed* 8-bit values rather than the typical
+unsigned 8-bit values. The new file is written as unsigned.
+
+positional arguments:
+  input            Input filterbank file, containing signed 8-bit numbers
+  output           Output filterbank file, writen as unsigned 8-bit numbers
+
+optional arguments:
+  -h, --help       show this help message and exit
+  -S, --no-signed  Don't write an UNSIGNED entry in the output file

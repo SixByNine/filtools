@@ -1,0 +1,55 @@
+usage: ft_inject_pulsar [-h] -o OUTPUT [-p PULSE] [-S FLUX] [-i SIDX]
+                        [--sidx-reffreq SIDX_REFFREQ] [-E PULSE_SIGMA]
+                        [--pred PRED] [--f0 F0] [--f1 F1] [--f2 F2]
+                        [--accn ACCN] [--pepoch PEPOCH] [-D DM] [-x]
+                        [-c SCATTER_TIME] [-X SCATTER_INDEX]
+                        [--scatter-reffreq SCATTER_REFFREQ] [-T SITE]
+                        [--gain GAIN] [--tsys TSYS] [--rms RMS]
+                        [--offset OFFSET]
+                        input
+
+Inject a pulsar signal into a filterbank file
+
+positional arguments:
+  input                 Input filterbank file
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -o OUTPUT, --output OUTPUT
+                        Output file name
+
+Pulse profile settings:
+  -p PULSE, --pulse PULSE
+                        Pulse model type (sin, delta), or profile file to load
+  -S FLUX, --flux FLUX  Phase averatge flux density (Jy)
+  -i SIDX, --sidx SIDX  Spectral index
+  --sidx-reffreq SIDX_REFFREQ
+                        Spectral index reference frequency (1400 MHz)
+  -E PULSE_SIGMA, --pulse-sigma PULSE_SIGMA
+                        'sigma' for log-normal pulse intensity distribution
+
+Pulse period settings:
+  --pred PRED           Predictor or polyco for pulsar
+  --f0 F0               Pulse frequency for simple spin model
+  --f1 F1               Pulse freq 1st derivative for simple spin model
+  --f2 F2               Pulse freq 2nd derivative for simple spin model
+  --accn ACCN           Pulse accelerationfor simple spin model (overrides F1)
+  --pepoch PEPOCH       Epoch of somple spin model (default=centre)
+
+Propagtion settings:
+  -D DM, --dm DM        DM of injected pulsar
+  -x, --no-intra-chan-dm
+                        Disable intra-channel DM
+  -c SCATTER_TIME, --scatter-time SCATTER_TIME
+                        Scattering timescale
+  -X SCATTER_INDEX, --scatter-index SCATTER_INDEX
+                        Scattering index
+  --scatter-reffreq SCATTER_REFFREQ
+                        Scattering index reference frequency (default=1400MHz)
+
+Telescope settings:
+  -T SITE, --site SITE  Telescope description to use.
+  --gain GAIN           Simulated telescope gain (K/Jy)
+  --tsys TSYS           Simulated telescope tsys (K)
+  --rms RMS             RMS in input data (default=auto)
+  --offset OFFSET       Offset in input data default=auto)

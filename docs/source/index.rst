@@ -12,6 +12,7 @@ Welcome to filtools's documentation!
 
    introduction
    installation
+   programs
 
 .. toctree::
    :maxdepth: 4

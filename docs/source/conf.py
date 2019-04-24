@@ -170,7 +170,6 @@ texinfo_documents = [
 
 
 def skip(app, what, name, obj, would_skip, options):
-    print(name)
     if name == "__call__":
         return False
     return would_skip
