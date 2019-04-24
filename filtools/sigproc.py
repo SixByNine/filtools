@@ -18,6 +18,11 @@ class FilterbankIO:
         inputfile = filtools.FilterbankIO()
         inputfile.read_header("example.fil")
         data = inputfile.read_block(1024) # Reads 1024 samples from the file
+
+
+    .. py:attribute:: header
+
+        Direct access to the sigproc header parameters
     
     """
     inttypes = ['machine_id', 'telescope_id', 'data_type', 'nchans',\
@@ -92,6 +97,16 @@ class FilterbankIO:
         return bytes_read
         
     def write_header(self,filename):
+        """
+        Write the current state to a new sigproc filterbank file
+
+        :param filename: filename to write
+        :returns: Number of bytes written (i.e. size of header)
+
+        This method will also put the :class:`FilterbankIO` object in a state for writing data to the 
+        file, i.e. enabling the :meth:`write_block` method.
+        """
+
         def write_string(file,string):
             l=len(string)
             byte_data= struct.pack("i{}s".format(l),l,string.encode("UTF-8"))
@@ -120,11 +135,19 @@ class FilterbankIO:
         self.state=2
   
     def clone_header(self):
+        """
+        Create a new :class:`FilterbankIO` object with the header parameters copied from this object
+
+        :returns: A new :class:`FilterbankIO` object
+        """
         ret = FilterbankIO()
         ret.header = self.header.copy()
         return ret
 
     def seconds_since(self,sample, mjdref):
+        """
+        Get the number of seconds since ``mjdref`` at sample number ``sample``.
+        """
         return 86400.0*(self.header['tstart'] - mjdref) + sample * self.header['tsamp']
 
     def mjd_at_sample(self,sample):
@@ -155,9 +178,9 @@ class FilterbankIO:
     def channel_bandwidth(self):
         return self.header['foff']
 
-    def read_block(self,dtype=np.float32):
+    def read_block(self,nsamples,dtype=np.float32):
         self.read_block=self.get_reader()
-        return self.read_block(dtype)
+        return self.read_block(nsamples,dtype)
 
     def get_reader(self):
         
