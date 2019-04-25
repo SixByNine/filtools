@@ -18,11 +18,11 @@ g = c*s       for 'mean' normalisation
 g = sqrt(c*s) for 'sqrt' normalisation
 g = 1.0       for 'sum'  normalisation
 
-and 'o' is a term to remove the DC offset, defined by
+and 'o' is a term to remove the addition of the DC offset, defined by
 
 o = D - c*s*D*F/g
 
-Note that o=0 if D=0, or in the case of mean normalisation with F=1.
+Note that o=0 if D=0, or in the case of mean normalisation (with F=1).
 
 Generally mean normalisation is best to prevent overflowing small data
 types, but 'sqrt' may better preserve weaker signals.
@@ -31,8 +31,8 @@ The values s,c,F,D can be set by the -s, -c, -F and -D options respectively.
 
 This can also be useful to simply re-scale the data with c=1 and s=1.
 
-If reducing number of bits, the output DC offset can also be set using the 
--O option. E.g. to convert to 8-bit data to 2-bit data, one might try
+If reducing number of bits, the output DC offset can also be set using the -O
+option. E.g. to convert to 8-bit data to 2-bit data, one might try
 
  $ ft_scrunch -F 0.02 -b 2 -O 1.5 8bit.fil 2bit.fil
 
@@ -49,6 +49,8 @@ parser.add_argument('-s', '--samples', type=int, help='Number of adjacent sample
 parser.add_argument('-F', '--factor', type=float, help='Scale factor (default=1)',default=1.0)
 parser.add_argument('-D', '--dc', type=float, help='DC offset (default=estimate)',default=None)
 parser.add_argument('-O', '--offset', type=float, help='Output DC offset (default=input)',default=None)
+parser.add_argument('-d', '--dm', type=float, help='Remove DM before scrunching channels (default=don\'t)',default=None)
+parser.add_argument('-B', '--blocksize', type=int, help='Set read block size',default=1024)
 
 args = parser.parse_args()
 
@@ -92,24 +94,81 @@ outchans = output.total_channels
 isample=0
 dc=args.dc
 outputDC=args.offset
-while True:
+prevBlock=None
+dm_const=2.41e-4
+blocksize=args.blocksize
+
+
+if not args.dm is None:
+    dm=args.dm
+    dly_in = np.power(input.frequency_table(),-2)*dm/dm_const
+    dly_out = np.power(output.frequency_table(),-2)*dm/dm_const
+    dly = dly_in-np.repeat(dly_out,args.chans)
+    bindly = np.round(dly/input.sample_interval()).astype(int)
+    maxdly=np.amax(np.abs(bindly))
+    blocksize = max(blocksize,4*maxdly)
+
+if blocksize%args.samples != 0:
+    blocksize = (blocksize//args.samples+1)*args.samples
+
+print("Block size: {}".format(blocksize))
+good=True
+while good:
     print("\r{: 10.2f}".format(input.seconds_since_start(isample)),end="")
-    block = input.read_block(1024*args.samples)
+    block = input.read_block(blocksize*args.samples)
     if block.shape[0] == 0 :
         break
 
     if dc is None:
         dc = np.mean(block)
 
+    if not args.dm is None:
+
+        if prevBlock is None:
+            buffer = np.zeros((maxdly,block.shape[1])) + dc
+            ddblock = np.zeros((block.shape[0]-maxdly,block.shape[1]))
+            o = buffer.shape[0]
+        else:
+            buffer = prevBlock[-2*maxdly:,:]
+            ddblock = np.zeros((block.shape[0],block.shape[1]))
+            o = buffer.shape[0] - maxdly
+
+        l = ddblock.shape[0]
+
+
+        buffer = np.concatenate((buffer,block),axis=0)
+
+        for i in range(block.shape[1]):
+            ddblock[:,i] = buffer[o+bindly[i]:o+bindly[i]+l,i]
+
+        prevBlock = block
+        block=ddblock
+
+
     if outputDC is None:
         outputDC = dc
     offset = outputDC - dc*args.samples*args.chans*scale_factor
 
-    outsamps = block.shape[0] // args.samples
+
+    if block.shape[0] % args.samples != 0:
+        # At the end of the file, we might not be able to evenly scrunch
+        # so, discard the last parts
+        maxsamp = (block.shape[0] // args.samples)*args.samples
+        block = block[:maxsamp,:]
+        good=False
 
 
-    newblock = np.add.reduceat(block, np.arange(0, block.shape[0], args.samples),axis=0)
-    newblock = np.add.reduceat(newblock, np.arange(0, block.shape[1], args.chans),axis=1)
+    # Here we scrunch by reshaping and averaging
+    cblock = np.sum(block.reshape(block.shape[0],-1,args.chans),axis=2)
+
+    # This feels unpleasent but is not that slow. Might be able to optimise further?
+    newblock = np.sum(cblock.T.reshape(cblock.shape[1],-1,args.samples),axis=2).T
+
+
+    #old slow code
+    #newblock = np.add.reduceat(block, np.arange(0, block.shape[0], args.samples),axis=0)
+    #newblock = np.add.reduceat(newblock, np.arange(0, block.shape[1], args.chans),axis=1)
+
 
     newblock *= scale_factor
 

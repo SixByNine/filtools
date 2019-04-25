@@ -1,5 +1,5 @@
 usage: ft_scrunch [-h] [-b BITS] [-N NORMALISE] [-c CHANS] [-s SAMPLES]
-                  [-F FACTOR] [-D DC] [-O OFFSET]
+                  [-F FACTOR] [-D DC] [-O OFFSET] [-d DM] [-B BLOCKSIZE]
                   input output
 
 'Scrunch' channels and/or samples in the input filterbank.
@@ -15,11 +15,11 @@ g = c*s       for 'mean' normalisation
 g = sqrt(c*s) for 'sqrt' normalisation
 g = 1.0       for 'sum'  normalisation
 
-and 'o' is a term to remove the DC offset, defined by
+and 'o' is a term to remove the addition of the DC offset, defined by
 
 o = D - c*s*D*F/g
 
-Note that o=0 if D=0, or in the case of mean normalisation with F=1.
+Note that o=0 if D=0, or in the case of mean normalisation (with F=1).
 
 Generally mean normalisation is best to prevent overflowing small data
 types, but 'sqrt' may better preserve weaker signals.
@@ -28,8 +28,8 @@ The values s,c,F,D can be set by the -s, -c, -F and -D options respectively.
 
 This can also be useful to simply re-scale the data with c=1 and s=1.
 
-If reducing number of bits, the output DC offset can also be set using the 
--O option. E.g. to convert to 8-bit data to 2-bit data, one might try
+If reducing number of bits, the output DC offset can also be set using the -O
+option. E.g. to convert to 8-bit data to 2-bit data, one might try
 
  $ ft_scrunch -F 0.02 -b 2 -O 1.5 8bit.fil 2bit.fil
 
@@ -53,3 +53,6 @@ optional arguments:
   -D DC, --dc DC        DC offset (default=estimate)
   -O OFFSET, --offset OFFSET
                         Output DC offset (default=input)
+  -d DM, --dm DM        Remove DM before scrunching channels (default=don't)
+  -B BLOCKSIZE, --blocksize BLOCKSIZE
+                        Set read block size
