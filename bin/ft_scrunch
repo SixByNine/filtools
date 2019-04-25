@@ -30,6 +30,14 @@ types, but 'sqrt' may better preserve weaker signals.
 The values s,c,F,D can be set by the -s, -c, -F and -D options respectively.
 
 This can also be useful to simply re-scale the data with c=1 and s=1.
+
+If reducing number of bits, the output DC offset can also be set using the 
+-O option. E.g. to convert to 8-bit data to 2-bit data, one might try
+
+ $ ft_scrunch -F 0.02 -b 2 -O 1.5 8bit.fil 2bit.fil
+
+to write 2-bit data with the mean at 1.5 and scaling by a factor of 0.02
+
 """,formatter_class=argparse.RawTextHelpFormatter)
 
 parser.add_argument('input', type=str, help="Input filterbank file")
@@ -40,11 +48,19 @@ parser.add_argument('-c', '--chans', type=int, help='Number of adjacent channels
 parser.add_argument('-s', '--samples', type=int, help='Number of adjacent samples to scrunch (default=1)',default=1)
 parser.add_argument('-F', '--factor', type=float, help='Scale factor (default=1)',default=1.0)
 parser.add_argument('-D', '--dc', type=float, help='DC offset (default=estimate)',default=None)
+parser.add_argument('-O', '--offset', type=float, help='Output DC offset (default=input)',default=None)
 
 args = parser.parse_args()
 
 input = filtools.FilterbankIO()
 input.read_header(args.input)
+
+
+if input.total_channels()%args.chans != 0:
+    print("Channel scrunch factor must be a divisor of the number of channels.")
+    sys.exit(1)
+
+
 
 print("Read header")
 output = input.clone_header()
@@ -75,6 +91,7 @@ else:
 outchans = output.total_channels
 isample=0
 dc=args.dc
+outputDC=args.offset
 while True:
     print("\r{: 10.2f}".format(input.seconds_since_start(isample)),end="")
     block = input.read_block(1024*args.samples)
@@ -83,8 +100,10 @@ while True:
 
     if dc is None:
         dc = np.mean(block)
-        
-    offset = dc - dc*args.samples*args.chans*scale_factor
+
+    if outputDC is None:
+        outputDC = dc
+    offset = outputDC - dc*args.samples*args.chans*scale_factor
 
     outsamps = block.shape[0] // args.samples
 

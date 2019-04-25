@@ -1,5 +1,5 @@
 usage: ft_scrunch [-h] [-b BITS] [-N NORMALISE] [-c CHANS] [-s SAMPLES]
-                  [-F FACTOR] [-D DC]
+                  [-F FACTOR] [-D DC] [-O OFFSET]
                   input output
 
 'Scrunch' channels and/or samples in the input filterbank.
@@ -19,12 +19,21 @@ and 'o' is a term to remove the DC offset, defined by
 
 o = D - c*s*D*F/g
 
-Note that o=0 in the case of mean normalisation, or if D=0.
+Note that o=0 if D=0, or in the case of mean normalisation with F=1.
 
 Generally mean normalisation is best to prevent overflowing small data
 types, but 'sqrt' may better preserve weaker signals.
 
+The values s,c,F,D can be set by the -s, -c, -F and -D options respectively.
+
 This can also be useful to simply re-scale the data with c=1 and s=1.
+
+If reducing number of bits, the output DC offset can also be set using the 
+-O option. E.g. to convert to 8-bit data to 2-bit data, one might try
+
+ $ ft_scrunch -F 0.02 -b 2 -O 1.5 8bit.fil 2bit.fil
+
+to write 2-bit data with the mean at 1.5 and scaling by a factor of 0.02
 
 positional arguments:
   input                 Input filterbank file
@@ -42,3 +51,5 @@ optional arguments:
   -F FACTOR, --factor FACTOR
                         Scale factor (default=1)
   -D DC, --dc DC        DC offset (default=estimate)
+  -O OFFSET, --offset OFFSET
+                        Output DC offset (default=input)
