@@ -14,6 +14,15 @@ ft_inject_pulsar
     :literal:
 .. highlight:: default
 
+
+ft_scrunch
+-----------------------------
+
+.. highlight:: none
+.. include:: usage/ft_scrunch
+    :literal:
+.. highlight:: default
+
 ft_convert_signed_to_unsigned
 -----------------------------
 

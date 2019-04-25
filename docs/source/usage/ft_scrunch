@@ -1,0 +1,44 @@
+usage: ft_scrunch [-h] [-b BITS] [-N NORMALISE] [-c CHANS] [-s SAMPLES]
+                  [-F FACTOR] [-D DC]
+                  input output
+
+'Scrunch' channels and/or samples in the input filterbank.
+Output is scaled acording to the normalisation method and the supplied
+scale factor. If scrunching by 's' samples and 'c' channels, with a 
+scale factor 'F', the result is
+
+out[i] = sum(in[i:i+s][i:i+c]) * F / g + o
+
+where:
+
+g = c*s       for 'mean' normalisation
+g = sqrt(c*s) for 'sqrt' normalisation
+g = 1.0       for 'sum'  normalisation
+
+and 'o' is a term to remove the DC offset, defined by
+
+o = D - c*s*D*F/g
+
+Note that o=0 in the case of mean normalisation, or if D=0.
+
+Generally mean normalisation is best to prevent overflowing small data
+types, but 'sqrt' may better preserve weaker signals.
+
+This can also be useful to simply re-scale the data with c=1 and s=1.
+
+positional arguments:
+  input                 Input filterbank file
+  output                Output filterbank file
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -b BITS, --bits BITS  Output number of bits (default=same as input)
+  -N NORMALISE, --normalise NORMALISE
+                        Normalisation method (default=mean)
+  -c CHANS, --chans CHANS
+                        Number of adjacent channels to scrunch (default=1)
+  -s SAMPLES, --samples SAMPLES
+                        Number of adjacent samples to scrunch (default=1)
+  -F FACTOR, --factor FACTOR
+                        Scale factor (default=1)
+  -D DC, --dc DC        DC offset (default=estimate)

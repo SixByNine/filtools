@@ -3,6 +3,14 @@ import struct
 import os
 import numpy as np
 
+def _check_modifiable(meth):
+    def inner(self,*args,**kwargs):
+        if self.state==0:
+            meth(self,*args,**kwargs)
+        else:
+            raise Exception("Cannot modify file whilst file is open.")
+    return inner
+
 class FilterbankIO:
     """
     This class deals with reading from and writing to sigproc filterbank files.
@@ -172,7 +180,7 @@ class FilterbankIO:
         :param refmjd: Reference mjd
         :returns: seconds since ``mjdref`` at sample ``sample``
         """
-        return 86400.0*(self.header['tstart'] - mjdref) + self.seconds_since_sart(sample)
+        return 86400.0*(self.header['tstart'] - mjdref) + self.seconds_since_start(sample)
 
     def mjd_at_sample(self,sample):
         """Get the MJD at given sample number"""
@@ -181,6 +189,7 @@ class FilterbankIO:
     def frequency_table(self):
         """Get an array of centre frequency of each channel"""
         return np.linspace(self.header['fch1'],self.header['fch1'] + self.header['nchans']*self.header['foff'],self.header['nchans'],endpoint=False)
+
 
     def seek_to_sample(self,sample):
         """
@@ -204,26 +213,54 @@ class FilterbankIO:
         """
         return ((self.file.tell()-self.data_position) * self.header['nbits']) // (8*self.header['nchans'])
         
+    def bits_per_sample(self):
+        """Number of bits per sample in data file"""
+        return self.header['nbits']
+
+    @_check_modifiable
+    def set_bits_per_sample(self,val):
+        """Set the number of bits per sample to write"""
+        self.header['nbits'] = int(val)
+
     def total_bytes(self):
         """Compute the total number of bytes in the file"""
         return os.fstat(self.file.fileno()).st_size
-    
+
     def total_channels(self):
-        """Compute the total number of frequency channels in the file"""
+        """The total number of frequency channels in the file"""
         return self.header['nchans']
 
+    @_check_modifiable
+    def set_total_channels(self,val):
+        self.header['nchans'] = val
+
     def total_samples(self):
-        """Compute the total number of samples in the file"""
+        """The total number of samples in the file"""
         header_size = self.data_position - self.header_position
         return int(8*(self.total_bytes()-header_size) / self.header['nchans'] / self.header['nbits'])
         
     def sample_interval(self):
-        """Return the time between each sample"""
+        """The time between each sample"""
         return self.header['tsamp']
 
+    @_check_modifiable
+    def set_sample_interval(self,val):
+        self.header['tsamp'] = val
+
     def channel_bandwidth(self):
-        """Return the channel bandwidth"""
+        """The channel bandwidth."""
         return self.header['foff']
+
+    def centre_frequency(self):
+        """The centre frequency"""
+        return self.header['fch1'] + self.header['foff'] * (self.header['nchans']-1)/2.0
+
+    @_check_modifiable
+    def set_frequency_table(self,new_centre_freq,new_ch_bw,new_nchans):
+        self.header['foff'] = new_ch_bw
+        self.header['nchans'] = new_nchans
+        self.header['fch1'] = new_centre_freq - self.header['foff'] * (self.header['nchans']-1)/2.0
+
 
     def read_block(self,nsamples,dtype=np.float32):
         """
