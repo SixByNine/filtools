@@ -74,6 +74,9 @@ output.set_sample_interval(input.sample_interval() * args.samples)
 if not args.bits is None:
     output.set_bits_per_sample(args.bits)
 
+if not args.dm is None:
+    output.set_reference_dm(args.dm)
+
 output.write_header(args.output)
 
 
@@ -96,7 +99,7 @@ dc=args.dc
 outputDC=args.offset
 prevBlock=None
 dm_const=2.41e-4
-blocksize=args.blocksize
+blocksize=args.blocksize*args.samples
 
 
 if not args.dm is None:
@@ -115,7 +118,13 @@ print("Block size: {}".format(blocksize))
 good=True
 while good:
     print("\r{: 10.2f}".format(input.seconds_since_start(isample)),end="")
-    block = input.read_block(blocksize*args.samples)
+
+    if (not args.dm is None) and (prevBlock is None):
+        # Here we are dedispersing and need to read a bit more
+        # The first time, so we still have a sensible block size at the end
+        block = input.read_block(blocksize + maxdly)
+    else:
+        block = input.read_block(blocksize)
     if block.shape[0] == 0 :
         break
 

@@ -247,6 +247,17 @@ class FilterbankIO:
     def set_sample_interval(self,val):
         self.header['tsamp'] = val
 
+
+    def reference_dm(self):
+        if 'refdm' in self.header:
+            return self.header['refdm']
+        else:
+            return 0.0
+
+    @_check_modifiable
+    def set_reference_dm(self,val):
+        self.header['refdm'] = val
+
     def channel_bandwidth(self):
         """The channel bandwidth."""
         return self.header['foff']
