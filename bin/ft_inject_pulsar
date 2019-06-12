@@ -10,6 +10,13 @@ import filtools
 import filtools.inject_pulsar as ip
 import numpy as np
 
+have_t2pred=False
+try:
+    import t2pred
+    have_t2pred=True
+except:
+    pass
+
 
 def ft_inject_pulsar(argv):
     parser=argparse.ArgumentParser(description="Inject a pulsar signal into a filterbank file")
@@ -27,7 +34,12 @@ def ft_inject_pulsar(argv):
     group.add_argument('-E','--pulse-sigma', type=float, help="'sigma' for log-normal pulse intensity distribution",default=0.0)
 
     group=parser.add_argument_group('Pulse period settings')
-    group.add_argument('--pred', type=str, help="Predictor or polyco for pulsar")
+    if have_t2pred:
+        group.add_argument('--pred', type=str, help="Predictor or polyco for pulsar")
+    else:
+        group.add_argument('--pred', type=str, help="t2pred library not found; prints installation help",nargs="?")
+
+
     group.add_argument('--f0', type=float, help="Pulse frequency for simple spin model",default=10.0)
     group.add_argument('--f1', type=float, help="Pulse freq 1st derivative for simple spin model",default=0.0)
     group.add_argument('--f2', type=float, help="Pulse freq 2nd derivative for simple spin model",default=0.0)
@@ -68,7 +80,21 @@ def ft_inject_pulsar(argv):
             pepoch=args.pepoch
         phase_model = ip.simple_phase_model(epoch=pepoch,f0=args.f0,f1=args.f1,f2=args.f2,accn=args.accn)
     else:
-        raise Exception("Pred model not implemeted yet")
+        if have_t2pred:
+            pred = t2pred.phase_predictor(args.pred)
+            phase_model = ip.predictor_phase_model(pred)
+            pass
+        else:
+            print("NOTICE: The --pred option allows you to use a phase predictor to inject")
+            print("        a pulsar that tracks an arbitrary pulsar par file. However, this")
+            print("        requires the installation of the t2pred library from tempo2.")
+            print("")
+            print("        Install from the tempo2 source directory by running")
+            print("         $ python setup.py install")
+            print("        in the tempo2/python/t2pred directory.")
+            sys.exit(2)
+
+
 
     # Set up pulse model. There are special keywords here, otherwise assume it is a file.
     if args.pulse == "sin":
@@ -111,7 +137,7 @@ def ft_inject_pulsar(argv):
     scaler.offset=offset
     scaler.rms=rms
     if args.site is None:
-        scaler.set_gain_from_physical(gain=args.gain,tsamp=infile.sample_interval())
+        scaler.gain=args.gain
     else:
         scaler.set_gain_from_file("{}.yaml".format(args.site.lower()))
     scaler.init(bw=infile.channel_bandwidth(),tsamp=infile.sample_interval())

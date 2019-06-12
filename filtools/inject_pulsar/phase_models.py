@@ -38,3 +38,44 @@ class simple_phase_model:
         t = time - (self.epoch-mjdref)*86400.0
         return self.f0 + self.f1*t + self.f2*t*t/2.0
 
+
+class predictor_phase_model:
+    """
+    A phase model that uses a phase predictor (or polyco) from
+    tempo or tempo2. It uses the t2pred library to convert between
+    time and phase, so can model a wide range of pulsar behaviour.
+
+    :param predictor: The phase predictor to use
+    :type predictor:  A t2pred.phase_predictor object
+
+    .. notice::
+       This module will only function if you have installed the t2pred python library in tempo2.
+       This can be installed using setup.py in the python/t2pred directory in the tempo2 source code.
+    """
+    
+    def __init__(self,predictor):
+        self.predictor=predictor
+
+
+    def get_phase(self, time, mjdref):
+        """Get the pulse phase at time in seconds relative to refmjd"""
+#        phase=np.zeros(np.product(time.shape))
+#        i=0
+#        for t in (time.flatten().astype(np.longdouble)/86400.0)+mjdref:
+#            phase[i] = self.predictor.getPhase(t,1e9)
+#            i+=1
+#        return phase.reshape(time.shape)
+        return self.predictor.getPhase_array(time.astype(np.longdouble)/86400.0 + mjdref,1400)
+#        return self.predictor.getPhase_array(time/86400.0 + mjdref,1e9)
+
+
+    def get_frequency(self, time, mjdref):
+        """Get the pulse frequency at time in seconds relative to refmjd"""
+        freqs=np.zeros_like(time)
+        i=0
+        for t in (time.astype(np.longdouble)/86400.0)+mjdref:
+            freqs[i] = self.predictor.getPhase(t,1400)
+            i+=1
+        return freqs
+
+
