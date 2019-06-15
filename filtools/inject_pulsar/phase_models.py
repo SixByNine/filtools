@@ -1,5 +1,6 @@
 from __future__ import division
 import numpy as np
+from scipy import interpolate as interp
 
 class simple_phase_model:
     """
@@ -48,7 +49,7 @@ class predictor_phase_model:
     :param predictor: The phase predictor to use
     :type predictor:  A t2pred.phase_predictor object
 
-    .. notice::
+    .. note::
        This module will only function if you have installed the t2pred python library in tempo2.
        This can be installed using setup.py in the python/t2pred directory in the tempo2 source code.
     """
@@ -67,6 +68,77 @@ class predictor_phase_model:
 #        return phase.reshape(time.shape)
         return self.predictor.getPhase_array(time.astype(np.longdouble)/86400.0 + mjdref,1400)
 #        return self.predictor.getPhase_array(time/86400.0 + mjdref,1e9)
+
+
+    def get_frequency(self, time, mjdref):
+        """Get the pulse frequency at time in seconds relative to refmjd"""
+        freqs=np.zeros_like(time)
+        i=0
+        for t in (time.astype(np.longdouble)/86400.0)+mjdref:
+            freqs[i] = self.predictor.getPhase(t,1400)
+            i+=1
+        return freqs
+
+
+
+
+
+class approximating_predictor_phase_model:
+    """
+    A phase model that uses a phase predictor (or polyco) from
+    tempo or tempo2. It uses the t2pred library to convert between
+    time and phase, so can model a wide range of pulsar behaviour.
+    This version keeps its own polynomial interpolation of the 
+    predictor over short spans to reduce the number of calls to t2pred
+    and greatly increase the performance for a very minor precision
+    reduction.
+
+    :param predictor: The phase predictor to use
+    :type predictor:  A t2pred.phase_predictor object
+    :param dt: The interpolation window size in seconds
+
+    .. note::
+       This module will only function if you have installed the t2pred python library in tempo2.
+       This can be installed using setup.py in the python/t2pred directory in the tempo2 source code.
+    """
+    
+    def __init__(self,predictor,dt=0.01):
+        self.predictor=predictor
+        self.dt=dt
+        self.default_tspan=100
+        self.mjdref=None
+
+    def get_phase(self, time, mjdref):
+        """Get the pulse phase at time in seconds relative to refmjd"""
+        if self.mjdref==None:
+            self.mjdref=mjdref
+            self.tstart=np.amin(time)
+            t = np.linspace(self.tstart,self.tstart+self.default_tspan,self.default_tspan/self.dt,endpoint=True)
+            phs = self.predictor.getPhase_array(t.astype(np.longdouble)/86400.0 + mjdref,1400)
+            grad = (phs[1:]-phs[:-1])/self.dt
+            self.pp = interp.PPoly([grad,phs[:-1]], t)
+            self.tend=t[-1]
+        else:
+            time += (mjdref-self.mjdref)*86400.0
+            while np.amin(time) < self.tstart:
+                self.tstart -= self.default_tspan
+                t = np.linspace(self.tstart,self.tstart+self.default_tspan,self.default_tspan/self.dt,endpoint=True)
+                phs = self.predictor.getPhase_array(t.astype(np.longdouble)/86400.0 + mjdref,1400)
+                grad = (phs[1:]-phs[:-1])/self.dt
+                self.pp.extend([grad,phs[:-1]], t[:-1])
+            while np.amax(time) > self.tend:
+                self.tend += self.default_tspan
+                t = np.linspace(self.tend-self.default_tspan,self.tend,self.default_tspan/self.dt,endpoint=True)
+                phs = self.predictor.getPhase_array(t.astype(np.longdouble)/86400.0 + mjdref,1400)
+                grad = (phs[1:]-phs[:-1])/self.dt
+                self.pp.extend([grad,phs[:-1]], t[1:])
+
+
+
+
+        #return np.reshape(self.pp(time.flatten,time.shape)
+        return self.pp(time)
+
 
 
     def get_frequency(self, time, mjdref):

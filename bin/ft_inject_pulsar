@@ -36,6 +36,7 @@ def ft_inject_pulsar(argv):
     group=parser.add_argument_group('Pulse period settings')
     if have_t2pred:
         group.add_argument('--pred', type=str, help="Predictor or polyco for pulsar")
+        group.add_argument('--precision-pred', action='store_true', help="Call t2pred for every phase computation - slow")
     else:
         group.add_argument('--pred', type=str, help="t2pred library not found; prints installation help",nargs="?")
 
@@ -82,7 +83,10 @@ def ft_inject_pulsar(argv):
     else:
         if have_t2pred:
             pred = t2pred.phase_predictor(args.pred)
-            phase_model = ip.predictor_phase_model(pred)
+            if args.precision_pred:
+                phase_model = ip.predictor_phase_model(pred)
+            else:
+                phase_model = ip.approximating_predictor_phase_model(pred)
             pass
         else:
             print("NOTICE: The --pred option allows you to use a phase predictor to inject")
@@ -102,7 +106,8 @@ def ft_inject_pulsar(argv):
     elif args.pulse == "delta":
         pulse_model=ip.delta_pulse_model(phase_model=phase_model,freq=freqs)
     else:
-        raise Exception("Pulse model with file not implemented yet")
+        prof_dat = np.loadtxt(args.pulse,usecols=(0))
+        pulse_model=ip.piecewise_pulse_model(phase_model=phase_model,freq=freqs,profile=prof_dat)
 
     # Set up ISM
     if args.scatter_time > 0:
