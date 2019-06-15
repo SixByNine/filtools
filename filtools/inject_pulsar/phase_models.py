@@ -40,11 +40,13 @@ class simple_phase_model:
         return self.f0 + self.f1*t + self.f2*t*t/2.0
 
 
-class predictor_phase_model:
+class precision_predictor_phase_model:
     """
     A phase model that uses a phase predictor (or polyco) from
     tempo or tempo2. It uses the t2pred library to convert between
     time and phase, so can model a wide range of pulsar behaviour.
+    This model calls t2pred on every request so is slow, but very
+    accurate.
 
     :param predictor: The phase predictor to use
     :type predictor:  A t2pred.phase_predictor object
@@ -79,16 +81,12 @@ class predictor_phase_model:
             i+=1
         return freqs
 
-
-
-
-
-class approximating_predictor_phase_model:
+class predictor_phase_model:
     """
     A phase model that uses a phase predictor (or polyco) from
     tempo or tempo2. It uses the t2pred library to convert between
     time and phase, so can model a wide range of pulsar behaviour.
-    This version keeps its own polynomial interpolation of the 
+    This version keeps its own polynomial interpolation of the~
     predictor over short spans to reduce the number of calls to t2pred
     and greatly increase the performance for a very minor precision
     reduction.
@@ -101,42 +99,45 @@ class approximating_predictor_phase_model:
        This module will only function if you have installed the t2pred python library in tempo2.
        This can be installed using setup.py in the python/t2pred directory in the tempo2 source code.
     """
-    
-    def __init__(self,predictor,dt=0.01):
+
+    def __init__(self,predictor,dt=0.1):
         self.predictor=predictor
         self.dt=dt
-        self.default_tspan=100
+        self.default_tspan=10
         self.mjdref=None
 
+    def make_poly(self,t):
+        phs = self.predictor.getPhase_array(t.astype(np.longdouble)/86400.0 + self.mjdref,1400)
+        freq= self.predictor.getFrequency_array(t.astype(np.longdouble)/86400.0 + self.mjdref,1400)
+        try:
+            # Newer versions of scipy
+            pp = interp.CubicHermiteSpline(t,phs,freq)
+        except:
+            # fall back if CubicHermiteSpline is not existing
+            yi=np.vstack((phs,freq)).T
+            pp = interp.BPoly.from_derivatives(t,yi)
+        return pp
+        
     def get_phase(self, time, mjdref):
         """Get the pulse phase at time in seconds relative to refmjd"""
         if self.mjdref==None:
             self.mjdref=mjdref
             self.tstart=np.amin(time)
             t = np.linspace(self.tstart,self.tstart+self.default_tspan,self.default_tspan/self.dt,endpoint=True)
-            phs = self.predictor.getPhase_array(t.astype(np.longdouble)/86400.0 + mjdref,1400)
-            grad = (phs[1:]-phs[:-1])/self.dt
-            self.pp = interp.PPoly([grad,phs[:-1]], t)
             self.tend=t[-1]
-        else:
-            time += (mjdref-self.mjdref)*86400.0
-            while np.amin(time) < self.tstart:
-                self.tstart -= self.default_tspan
-                t = np.linspace(self.tstart,self.tstart+self.default_tspan,self.default_tspan/self.dt,endpoint=True)
-                phs = self.predictor.getPhase_array(t.astype(np.longdouble)/86400.0 + mjdref,1400)
-                grad = (phs[1:]-phs[:-1])/self.dt
-                self.pp.extend([grad,phs[:-1]], t[:-1])
-            while np.amax(time) > self.tend:
-                self.tend += self.default_tspan
-                t = np.linspace(self.tend-self.default_tspan,self.tend,self.default_tspan/self.dt,endpoint=True)
-                phs = self.predictor.getPhase_array(t.astype(np.longdouble)/86400.0 + mjdref,1400)
-                grad = (phs[1:]-phs[:-1])/self.dt
-                self.pp.extend([grad,phs[:-1]], t[1:])
+            self.pp = self.make_poly(t)
 
-
-
-
-        #return np.reshape(self.pp(time.flatten,time.shape)
+        time += (mjdref-self.mjdref)*86400.0
+        while np.amin(time) < self.tstart:
+            self.tstart -= self.default_tspan
+            t = np.linspace(self.tstart,self.tstart+self.default_tspan,self.default_tspan/self.dt,endpoint=True)
+            pp = self.make_poly(t)
+            self.pp.extend(pp.c,pp.x[:-1])
+        while np.amax(time) > self.tend:
+            self.tend += self.default_tspan
+            t = np.linspace(self.tend-self.default_tspan,self.tend,self.default_tspan/self.dt,endpoint=True)
+            pp = self.make_poly(t)
+            self.pp.extend(pp.c,pp.x[1:])
         return self.pp(time)
 
 
@@ -149,5 +150,6 @@ class approximating_predictor_phase_model:
             freqs[i] = self.predictor.getPhase(t,1400)
             i+=1
         return freqs
+
 
 

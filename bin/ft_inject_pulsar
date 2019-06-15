@@ -84,9 +84,9 @@ def ft_inject_pulsar(argv):
         if have_t2pred:
             pred = t2pred.phase_predictor(args.pred)
             if args.precision_pred:
-                phase_model = ip.predictor_phase_model(pred)
+                phase_model = ip.precision_predictor_phase_model(pred)
             else:
-                phase_model = ip.approximating_predictor_phase_model(pred)
+                phase_model = ip.predictor_phase_model(pred)
             pass
         else:
             print("NOTICE: The --pred option allows you to use a phase predictor to inject")
