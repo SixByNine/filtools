@@ -1,7 +1,7 @@
 from __future__ import division
 import numpy as np
 
-    
+
 class simple_propagation_model:
     r"""Models simple cold-plasma dispersion delays.
 
@@ -22,31 +22,30 @@ class simple_propagation_model:
 
     def __init__(self,freq,input,dm,intra_chan=True,dm_const=2.41e-4):
         self.input = input
-        
-        ch_w = freq[1]-freq[0]
+
+        # We define frequency start as being the lower frequency so use absolute value here...
+        ch_w = np.abs(freq[1]-freq[0]) 
         self.freq_start = freq-ch_w/2.0
         self.freq_end   = freq+ch_w/2.0
-        print(freq)
 
         self.nchan = len(freq)
-        
-        
+
         if intra_chan:
             self.dm_delays_start = np.power(self.freq_start,-2)*dm/dm_const
             self.dm_delays_end = np.power(self.freq_end,-2)*dm/dm_const
         else:
             self.dm_delays_start = np.power(freq,-2)*dm/dm_const
             self.dm_delays_end   = self.dm_delays_start.copy()
-       
 
-    
-    
+
+
+
     def __call__(self,t1,t2,mjdref):
         """
         Compute average flux density between t1 and t2 in each frequency channel.
-        
+
         Output is in flux density units.
-        
+
         :param t1: Start time in seconds, relative to mjdref
         :param t2: End time in seconds, relative to mjdref
         :returns:  Average flux density between t1 and t2.
@@ -75,27 +74,27 @@ class simple_scattering_model:
 
     """
     def __init__(self,freq,input,t_scatt,dx,scatt_idx=-4.0,ref_freq=1400.0):
-        
+
         self.t_scatt = t_scatt
-        
+
         self.const=np.exp(-dx/(self.t_scatt*np.power(freq/ref_freq,scatt_idx)))
         self.rconst = 1.0 - self.const
         self.input=input
         nchan = len(freq)
         self.store=np.zeros(nchan)
-    
+
 
     def __call__(self,t1,t2,mjdref):    
         """
         Compute average flux density between t1 and t2 in each frequency channel.
-        
+
         Output is in flux density units.
 
         .. warning::
             The simple scattering model assumes that each sample to be generated is called in sequence.
             I.e. no calls to get_spectrum occur out of sequence. This will prevent multi-threaded operation
             of codes using this module.
-        
+
         :param t1: Start time in seconds, relative to mjdref
         :param t2: End time in seconds, relative to mjdref
         :returns:  Average flux density between t1 and t2.
@@ -112,5 +111,5 @@ class simple_scattering_model:
                 spec[isamp] = self.store * self.rconst
                 self.store *= self.const
         return spec
-        
+
 

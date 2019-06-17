@@ -158,6 +158,7 @@ def ft_inject_pulsar(argv):
     isamp=0
     while True:
         block = infile.read_block(256)
+        print("\r{: 10.2f}s".format(infile.seconds_since(isamp,mjdref)),end="")
         if block.shape[0]==0:
             break
         if False:
@@ -188,6 +189,7 @@ def ft_inject_pulsar(argv):
 
         write_block(block)
     ofil.close()
+    print("")
 
 
 
