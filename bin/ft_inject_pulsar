@@ -57,8 +57,8 @@ def ft_inject_pulsar(argv):
 
     group=parser.add_argument_group('Telescope settings')
     group.add_argument('-T','--site', type=str, help="Telescope description to use.",default=None)
-    group.add_argument('--gain', type=str, help="Simulated telescope gain (K/Jy)",default=1.0)
-    group.add_argument('--tsys', type=str, help="Simulated telescope tsys (K)",default=25.0)
+    group.add_argument('--gain', type=float, help="Simulated telescope gain (K/Jy)",default=1.0)
+    group.add_argument('--tsys', type=float, help="Simulated telescope tsys (K)",default=25.0)
     group.add_argument('--rms', type=float, help="RMS in input data (default=auto)",default=None)
     group.add_argument('--offset', type=float, help="Offset in input data default=auto)",default=None)
     args=parser.parse_args(argv[1:])
