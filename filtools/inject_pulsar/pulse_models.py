@@ -54,7 +54,7 @@ class sinusoid_pulse_model:
     r"""
     Models a pulsar as a sinusoid function.
 
-    .. math:: I(\phi) = \sin{(2\pi\phi)}
+    .. math:: I(\phi) = \cos{(2\pi\phi)+1}
 
     Where :math:`\phi` is the phase in turns (i.e. between 0 and 1).
 

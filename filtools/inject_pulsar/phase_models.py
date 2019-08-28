@@ -86,13 +86,13 @@ class predictor_phase_model:
     A phase model that uses a phase predictor (or polyco) from
     tempo or tempo2. It uses the t2pred library to convert between
     time and phase, so can model a wide range of pulsar behaviour.
-    This version keeps its own polynomial interpolation of the~
+    This version keeps its own polynomial interpolation of the
     predictor over short spans to reduce the number of calls to t2pred
     and greatly increase the performance for a very minor precision
     reduction.
 
     :param predictor: The phase predictor to use
-    :type predictor:  A t2pred.phase_predictor object
+    :type predictor:  t2pred.phase_predictor
     :param dt: The interpolation window size in seconds
 
     .. note::
@@ -107,6 +107,11 @@ class predictor_phase_model:
         self.mjdref=None
 
     def make_poly(self,t):
+        """
+        This routine is used internally to make the polynomial approimation of the timing model.
+        If a new-ish version of scipy is installed it uses scipy.interp.CubicHermiteSpline, or
+        otherwise uses a scipy.interp.BPoly.
+        """
         phs = self.predictor.getPhase_array(t.astype(np.longdouble)/86400.0 + self.mjdref,1400)
         freq= self.predictor.getFrequency_array(t.astype(np.longdouble)/86400.0 + self.mjdref,1400)
         try:
@@ -119,7 +124,9 @@ class predictor_phase_model:
         return pp
         
     def get_phase(self, time, mjdref):
-        """Get the pulse phase at time in seconds relative to refmjd"""
+        """
+        Get the pulse phase at time in seconds relative to refmjd.
+        """
         if self.mjdref==None:
             self.mjdref=mjdref
             self.tstart=np.amin(time)

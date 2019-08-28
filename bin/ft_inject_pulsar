@@ -59,6 +59,7 @@ def ft_inject_pulsar(argv):
     group.add_argument('-T','--site', type=str, help="Telescope description to use.",default=None)
     group.add_argument('--gain', type=float, help="Simulated telescope gain (K/Jy)",default=1.0)
     group.add_argument('--tsys', type=float, help="Simulated telescope tsys (K)",default=25.0)
+    group.add_argument('--npol', type=int, help="Number of polarisations already averaged",default=2)
     group.add_argument('--rms', type=float, help="RMS in input data (default=auto)",default=None)
     group.add_argument('--offset', type=float, help="Offset in input data default=auto)",default=None)
     args=parser.parse_args(argv[1:])
@@ -145,7 +146,7 @@ def ft_inject_pulsar(argv):
         scaler.gain=args.gain
     else:
         scaler.set_gain_from_file("{}.yaml".format(args.site.lower()))
-    scaler.init(bw=infile.channel_bandwidth(),tsamp=infile.sample_interval())
+    scaler.init(bw=infile.channel_bandwidth(),tsamp=infile.sample_interval(),npol_avg=args.npol)
 
     # Start working on the ouput file
     ofil=infile.clone_header()
