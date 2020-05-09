@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='filtools',
-      version='2019.8.1',
+      version='2020.5.1',
       description='Tools for working on filterbank data',
       url='https://bitbucket.org/mkeith/filtools/',
       author='Michael Keith',
@@ -9,5 +9,5 @@ setup(name='filtools',
       license='GPLv3',
       packages=['filtools','filtools.inject_pulsar'],
       package_data={'filtools':['site_data/*.yaml']},
-      scripts=['bin/ft_convert_signed_to_unsigned','bin/ft_inject_pulsar','bin/ft_scrunch'],
+      scripts=['bin/ft_convert_signed_to_unsigned','bin/ft_inject_pulsar','bin/ft_scrunch', 'bin/ft_scrunch_threads'],
       zip_safe=False)
