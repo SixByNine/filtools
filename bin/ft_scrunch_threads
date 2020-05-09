@@ -104,6 +104,7 @@ dc=args.dc
 outputDC=args.offset
 dm_const=2.41e-4
 blocksize=args.blocksize*args.samples
+maxdly=0
 
 
 if not args.dm is None:
