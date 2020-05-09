@@ -5,6 +5,7 @@ import numpy as np
 import argparse
 import sys
 
+
 parser=argparse.ArgumentParser(description="""'Scrunch' channels and/or samples in the input filterbank.
 Output is scaled acording to the normalisation method and the supplied
 scale factor. If scrunching by 's' samples and 'c' channels, with a 
@@ -51,6 +52,7 @@ parser.add_argument('-D', '--dc', type=float, help='DC offset (default=estimate)
 parser.add_argument('-O', '--offset', type=float, help='Output DC offset (default=input)',default=None)
 parser.add_argument('-d', '--dm', type=float, help='Remove DM before scrunching channels (default=don\'t)',default=None)
 parser.add_argument('-B', '--blocksize', type=int, help='Set read block size',default=1024)
+parser.add_argument('--no-refdm',action='store_true',help="Don't set the REFDM header field when dedispersing")
 
 args = parser.parse_args()
 
@@ -74,7 +76,7 @@ output.set_sample_interval(input.sample_interval() * args.samples)
 if not args.bits is None:
     output.set_bits_per_sample(args.bits)
 
-if not args.dm is None:
+if not args.dm is None and args.no_refdm==False:
     output.set_reference_dm(args.dm)
 
 output.write_header(args.output)
@@ -111,6 +113,15 @@ if not args.dm is None:
     maxdly=np.amax(np.abs(bindly))
     blocksize = max(blocksize,4*maxdly)
 
+    # We can get a minor performance improvement by
+    # applying delays to channels in groups if there are many
+    # channels with the same delay
+    unique_dly = np.unique(bindly)
+    unique_chans = np.zeros((len(unique_dly), len(bindly)),dtype=bool)
+    for i,u in np.ndenumerate(unique_dly):
+        unique_chans[i] = bindly==u
+
+
 if blocksize%args.samples != 0:
     blocksize = (blocksize//args.samples+1)*args.samples
 
@@ -135,20 +146,28 @@ while good:
 
         if prevBlock is None:
             buffer = np.zeros((maxdly,block.shape[1])) + dc
-            ddblock = np.zeros((block.shape[0]-maxdly,block.shape[1]))
+            #ddblock = np.zeros((block.shape[0]-maxdly,block.shape[1]))
+            l=block.shape[0]-maxdly
             o = buffer.shape[0]
         else:
             buffer = prevBlock[-2*maxdly:,:]
-            ddblock = np.zeros((block.shape[0],block.shape[1]))
+            l=block.shape[0]
+            #ddblock = np.zeros((block.shape[0],block.shape[1]))
             o = buffer.shape[0] - maxdly
-
-        l = ddblock.shape[0]
-
 
         buffer = np.concatenate((buffer,block),axis=0)
 
-        for i in range(block.shape[1]):
-            ddblock[:,i] = buffer[o+bindly[i]:o+bindly[i]+l,i]
+        tbuf=buffer.T
+
+        # This strategy of creating a mask and applying it all at once
+        # Seems to be about 2x faster than trying to copy slices from
+        # the array channel by channel
+        mask=np.zeros(tbuf.shape,dtype=bool)
+        for i,u in np.ndenumerate(unique_dly):
+            mask[unique_chans[i],o+u:o+u+l] = True
+
+        ddblock = tbuf[mask]
+        ddblock = ddblock.reshape(block.shape[1],-1).T
 
         prevBlock = block
         block=ddblock
