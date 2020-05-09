@@ -125,6 +125,7 @@ if not args.dm is None:
 if blocksize%args.samples != 0:
     blocksize = (blocksize//args.samples+1)*args.samples
 
+
 print("Block size: {}".format(blocksize))
 good=True
 while good:
@@ -202,8 +203,11 @@ while good:
 
     newblock += offset
 
+
     output.write_block(newblock)
     isample+=block.shape[0]
+
+
 
 print("")
 
