@@ -1,0 +1,19 @@
+usage: ft_freqstack [-h] [--output OUTPUT] [-B BLOCKSIZE] input [input ...]
+
+Stack filterbank files in the frequency direction.
+
+The output file will start at the latest start time of the input files and end at the earliest end time.
+
+The output file will be padded with zeros for channels not included in the input files.
+
+Note that behaviour is not defined if the input data overlaps or the channel bandwidths vary between files!
+
+positional arguments:
+  input                 Input filterbank files
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --output OUTPUT, -o OUTPUT
+                        Output filterbank file
+  -B BLOCKSIZE, --blocksize BLOCKSIZE
+                        Set read block size

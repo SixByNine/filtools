@@ -1,0 +1,107 @@
+#!/usr/bin/env python
+import filtools
+import numpy as np
+import argparse
+import sys
+import glob
+
+
+
+parser=argparse.ArgumentParser(description="""Stack filterbank files in the frequency direction.
+
+The output file will start at the latest start time of the input files and end at the earliest end time.
+
+The output file will be padded with zeros for channels not included in the input files.
+
+Note that behaviour is not defined if the input data overlaps or the channel bandwidths vary between files!
+""",formatter_class=argparse.RawTextHelpFormatter)
+
+
+parser.add_argument('input', type=str, nargs='+', help="Input filterbank files")
+parser.add_argument('--output','-o', type=str, help="Output filterbank file")
+parser.add_argument('-B', '--blocksize', type=int, help='Set read block size',default=1024)
+
+args = parser.parse_args()
+
+infiles=args.input
+outfile=args.output
+
+
+infils=[]
+
+for f in infiles:
+    inp = filtools.FilterbankIO()
+    inp.read_header(f)
+    infils.append(inp)
+
+### Align all the files at the start of the 'last' file
+output_start=0
+for infil in infils:
+    mjd0 = infil.mjd_at_sample(0)
+    if mjd0 > output_start:
+        output_start=mjd0
+        output=infil.clone_header()
+        
+max_samples = infils[0].total_samples()
+for infil in infils:
+    seconds_to_skip = -infil.seconds_since(0,output_start)
+    samples_to_skip = int(seconds_to_skip/infil.header['tsamp'])
+    infil.seek_to_sample(samples_to_skip)
+    
+    total_samples = infil.total_samples()-samples_to_skip
+    print(total_samples)
+    if total_samples < max_samples:
+        max_samples = total_samples
+        
+
+### Work out the channel indexing
+fmin=1e99
+fmax=0
+foff=output.header['foff']
+for infil in infils:
+    ftab=infil.frequency_table()
+    if np.amin(ftab) < fmin:
+        fmin=np.amin(ftab)
+    if np.amax(ftab) > fmax:
+        fmax=np.amax(ftab)
+    
+nchans = abs(int(np.round(fmax-fmin)/foff))
+output.header['nchans'] = nchans
+if foff > 0:
+    output.header['fch1'] = fmin
+else:
+    output.header['fch1'] = fmax
+    
+ftab = output.frequency_table()
+for infil in infils:
+    infil._chan_offset = np.argmin(abs(ftab-infil.header['fch1']))
+
+
+# write the output header
+output.write_header(outfile)
+
+if output.header['nbits'] > 8:
+    dtype=np.float32
+else:
+    dtype=np.uint8
+## OK - lets start reading the data
+blocksize=args.blocksize
+isample = 0
+print("Block size: {}".format(blocksize))
+while isample < max_samples:
+    print("\r{: 10.2f} s".format(output.seconds_since_start(isample)),end="")
+    if max_samples - isample < blocksize:
+        blocksize = max_samples - isample
+        
+    outblockT = np.zeros((nchans,blocksize),dtype=dtype)
+    for infil in infils:
+        inblock = infil.read_block(blocksize,dtype=dtype)
+        outblockT[infil._chan_offset:infil._chan_offset+infil.header['nchans']] = inblock.T
+    
+    output.write_block(outblockT.T)
+    isample+=blocksize
+    
+    
+for infil in infils:
+    infil.close()
+output.close()

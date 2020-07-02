@@ -1,0 +1,67 @@
+usage: ft_scrunch_threads [-h] [-b BITS] [-N NORMALISE] [-c CHANS]
+                          [-s SAMPLES] [-F FACTOR] [-D DC] [-O OFFSET] [-d DM]
+                          [-B BLOCKSIZE] [-t THREADS]
+                          [--thread-chunk-size THREAD_CHUNK_SIZE] [--no-refdm]
+                          input output
+
+'Scrunch' channels and/or samples in the input filterbank.
+Output is scaled acording to the normalisation method and the supplied
+scale factor. If scrunching by 's' samples and 'c' channels, with a 
+scale factor 'F', the result is
+
+out[i] = sum(in[i:i+s][i:i+c]) * F / g + o
+
+where:
+
+g = c*s       for 'mean' normalisation
+g = sqrt(c*s) for 'sqrt' normalisation
+g = 1.0       for 'sum'  normalisation
+
+and 'o' is a term to remove the addition of the DC offset, defined by
+
+o = D - c*s*D*F/g
+
+Note that o=0 if D=0, or in the case of mean normalisation (with F=1).
+
+Generally mean normalisation is best to prevent overflowing small data
+types, but 'sqrt' may better preserve weaker signals.
+
+The values s,c,F,D can be set by the -s, -c, -F and -D options respectively.
+
+This can also be useful to simply re-scale the data with c=1 and s=1.
+
+If reducing number of bits, the output DC offset can also be set using the -O
+option. E.g. to convert to 8-bit data to 2-bit data, one might try
+
+ $ ft_scrunch_threads -F 0.02 -b 2 -O 1.5 8bit.fil 2bit.fil
+
+to write 2-bit data with the mean at 1.5 and scaling by a factor of 0.02
+
+** This version is optimised for multi-threaded output **
+
+positional arguments:
+  input                 Input filterbank file
+  output                Output filterbank file
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -b BITS, --bits BITS  Output number of bits (default=same as input)
+  -N NORMALISE, --normalise NORMALISE
+                        Normalisation method (default=mean)
+  -c CHANS, --chans CHANS
+                        Number of adjacent channels to scrunch (default=1)
+  -s SAMPLES, --samples SAMPLES
+                        Number of adjacent samples to scrunch (default=1)
+  -F FACTOR, --factor FACTOR
+                        Scale factor (default=1)
+  -D DC, --dc DC        DC offset (default=estimate)
+  -O OFFSET, --offset OFFSET
+                        Output DC offset (default=input)
+  -d DM, --dm DM        Remove DM before scrunching channels (default=don't)
+  -B BLOCKSIZE, --blocksize BLOCKSIZE
+                        Set read block size
+  -t THREADS, --threads THREADS
+                        Number of threads
+  --thread-chunk-size THREAD_CHUNK_SIZE
+                        Number of blocks to process per thread
+  --no-refdm            Don't set the REFDM header field when dedispersing

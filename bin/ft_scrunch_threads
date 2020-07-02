@@ -36,9 +36,11 @@ This can also be useful to simply re-scale the data with c=1 and s=1.
 If reducing number of bits, the output DC offset can also be set using the -O
 option. E.g. to convert to 8-bit data to 2-bit data, one might try
 
- $ ft_scrunch -F 0.02 -b 2 -O 1.5 8bit.fil 2bit.fil
+ $ ft_scrunch_threads -F 0.02 -b 2 -O 1.5 8bit.fil 2bit.fil
 
 to write 2-bit data with the mean at 1.5 and scaling by a factor of 0.02
+
+** This version is optimised for multi-threaded output **
 
 """,formatter_class=argparse.RawTextHelpFormatter)
 
