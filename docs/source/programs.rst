@@ -44,6 +44,6 @@ ft_freqstack
 -----------------------------
 
 .. highlight:: none
-.. include:: usage/ft_freqstack
+.. include:: usage/ft_freqstack.txt
     :literal:
 .. highlight:: default
