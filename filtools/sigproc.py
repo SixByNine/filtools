@@ -321,7 +321,7 @@ class FilterbankIO:
             raw = np.fromfile(self.file,dtype=np.uint8,count=nbytes)    
             out = np.zeros(len(raw) * 2, dtype=dtype)
             out[::2] += np.bitwise_and(raw,0x0f)
-            out[1::2] += np.right_shift(np.bitwise_and(raw,0x0f),4)
+            out[1::2] += np.right_shift(raw,4)
             return out.reshape(-1,nchans).astype(dtype)       
         
         def read_block_2bit(nsamples,dtype=np.float32):
