@@ -80,6 +80,8 @@ class FilterbankIO:
         """
         def read_string(file):
             nchar = np.fromfile(file,dtype=np.int32,count=1)[0]
+            if nchar == 0:
+                return ""
             if nchar < 1 or nchar > 80:
                 raise Exception("Cannot parse filterbank header (Nchar was {} when reading string).".format(nchar))
             byte_data = file.read(nchar)
@@ -113,7 +115,7 @@ class FilterbankIO:
                 key = read_string(self.file)
                 bytes_read += len(key)+4
         else:
-            raise Exception("Cannot parse filterbank header, HEADER_START was not fount")
+            raise Exception("Cannot parse filterbank header, HEADER_START was not found")
         self.state=1
         self.data_position=self.file.tell()
 

@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='filtools',
-      version='2020.5.1',
+      version='2021.10.1',
       description='Tools for working on filterbank data',
       url='https://bitbucket.org/mkeith/filtools/',
       author='Michael Keith',

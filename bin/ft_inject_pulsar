@@ -10,6 +10,7 @@ import filtools
 import filtools.inject_pulsar as ip
 import numpy as np
 
+
 have_t2pred=False
 try:
     import t2pred
@@ -61,7 +62,7 @@ def ft_inject_pulsar(argv):
     group.add_argument('--tsys', type=float, help="Simulated telescope tsys (K)",default=25.0)
     group.add_argument('--npol', type=int, help="Number of polarisations already averaged",default=2)
     group.add_argument('--rms', type=float, help="RMS in input data (default=auto)",default=None)
-    group.add_argument('--offset', type=float, help="Offset in input data default=auto)",default=None)
+    group.add_argument('--blocksize', type=int, help="Block size (default=256)",default=256)
     args=parser.parse_args(argv[1:])
 
     print(args)
@@ -128,7 +129,7 @@ def ft_inject_pulsar(argv):
     # Set up telecsope
 
     rms=args.rms
-    offset=args.offset
+    offset=0
     if rms is None or offset is None:
         block = infile.read_block(2048)
         if rms is None:
@@ -140,7 +141,7 @@ def ft_inject_pulsar(argv):
     print("RMS: {:.2f} offset: {:.2f}".format(rms,offset))
     scaler = filtools.FluxScale()
     scaler.tsys=args.tsys
-    scaler.offset=offset
+    scaler.offset=0 # We are injecting so we scale to zero offset.
     scaler.rms=rms
     if args.site is None:
         scaler.gain=args.gain
@@ -153,40 +154,32 @@ def ft_inject_pulsar(argv):
     ofil.write_header(args.output)
     write_block = ofil.get_writer()
 
-    integerise = filtools.SimpleIntegerise()
+
+    if infile.header['nbits']==32:
+        integerise_if_needed = lambda x:x
+    else:
+        integerise_if_needed = filtools.SimpleIntegerise()
 # Begin working on the data
     mjdref=infile.mjd_at_sample(0)
     isamp=0
     while True:
-        block = infile.read_block(256)
+        block = infile.read_block(args.blocksize)
         print("\r{: 10.2f}s".format(infile.seconds_since(isamp,mjdref)),end="")
         if block.shape[0]==0:
             break
-        if False:
-            for i in range(block.shape[0]):
-                bin_start = infile.seconds_since(isamp,mjdref).reshape(-1,1)
-                bin_end = infile.seconds_since(isamp+1,mjdref).reshape(-1,1)
 
-                spec = args.flux*inject_model(bin_start,bin_end,mjdref)
+        bsamp=block.shape[0]
+        samps = np.arange(isamp,isamp+bsamp,dtype=int)
+        bin_start = np.repeat(infile.seconds_since(samps,mjdref),repeats=infile.total_channels()).reshape(bsamp,-1)
+        bin_end = np.repeat(infile.seconds_since(samps+1,mjdref),repeats=infile.total_channels()).reshape(bsamp,-1)
 
-                spec = integerise(scaler.to_file_units(spec))
+        spec = args.flux*inject_model(bin_start,bin_end,mjdref)
 
-                block[i] += spec[0]
+        spec = integerise_if_needed(scaler.to_file_units(spec))
 
-                isamp += 1
-        else:
-                bsamp=block.shape[0]
-                samps = np.arange(isamp,isamp+bsamp,dtype=int)
-                bin_start = np.repeat(infile.seconds_since(samps,mjdref),repeats=infile.total_channels()).reshape(bsamp,-1)
-                bin_end = np.repeat(infile.seconds_since(samps+1,mjdref),repeats=infile.total_channels()).reshape(bsamp,-1)
+        block += spec
 
-                spec = args.flux*inject_model(bin_start,bin_end,mjdref)
-
-                spec = integerise(scaler.to_file_units(spec))
-
-                block += spec
-
-                isamp += bsamp
+        isamp += bsamp
 
         write_block(block)
     ofil.close()

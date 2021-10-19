@@ -21,6 +21,7 @@ class SimpleIntegerise:
         """
         mask=np.abs(block)>self.thresh
         block[mask] += np.random.uniform(size=np.sum(mask))
+        block[np.logical_not(mask)] = 0 # Stops negative values causing issues
         return np.floor(block)
 
 
