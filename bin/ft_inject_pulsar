@@ -135,6 +135,14 @@ def ft_inject_pulsar(argv):
     # Set up RFI injection if required
     rfi_model = None
     if args.rfi_config:
+        rfi_model = ip.inject_rfi()
+        if rfi_model.configure_db(filename=args.rfi_config, bsize=args.blocksize, nchans=infile.header['nchans'], fch1=infile.header['fch1'],
+                                     foff=infile.header['foff'],tsamp=infile.header['tsamp']):
+            print('Configuration of RFI blocks completed..')
+        else:
+            print('Oops! Failed to configure RFI blocks\nContinuing without RFI injection')
+            rfi_model = None
+        
         pass # do something
 
 
@@ -187,8 +195,12 @@ def ft_inject_pulsar(argv):
 
         spec = args.flux*inject_model(bin_start,bin_end,mjdref)
         if rfi_model is not None:
-            pass # Do something...
+            mask = rfi_model.injector(isamp)
+            mask = integerise_if_needed(scaler.to_file_units(mask))
+            block += mask.T
 
+            pass # Do something...
+        
         spec = integerise_if_needed(scaler.to_file_units(spec))
 
         block += spec
