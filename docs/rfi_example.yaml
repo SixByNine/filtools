@@ -1,0 +1,32 @@
+# fstart: Start frequency (MHz)
+# fstop:  Stop frequency (MHz)
+# tstart: Start Time (sec)
+# tstop:  Stop Time (sec)
+# period: Period of the periodic RFI (sec)
+# duty:   Duty Cycle of the periodic RFI (0 < duty < 1)
+# mag:    Magnitude of RFI (n)
+- fstart: 1350
+  fstop: 1670
+  mag:  9
+  tstart: 0.5
+  tstop:  0.505
+  period: 0
+- duty: 0.5
+  fstart: 1435
+  fstop: 1450
+  mag: 6
+  period: 0.1
+  tstart: 0.6
+  tstop: 0.89
+- fstart: 1595
+  fstop: 1630
+  mag:  5
+  tstart: 0.3
+  tstop:  0.55
+  period: 0
+- fstart: 1600
+  fstop: 1605
+  mag: 3
+  period: 0
+  tstart: 0.2
+  tstop: 0.4
