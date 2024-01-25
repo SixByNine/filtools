@@ -195,11 +195,12 @@ def ft_inject_pulsar(argv):
 
         spec = args.flux*inject_model(bin_start,bin_end,mjdref)
         if rfi_model is not None:
-            mask = rfi_model.injector(isamp)
-            mask = integerise_if_needed(scaler.to_file_units(mask))
-            block += mask.T
-
-            pass # Do something...
+            try:
+                mask = rfi_model.injector(isamp)
+                mask = integerise_if_needed(scaler.to_file_units(mask))
+                block += mask.T
+            except:
+                pass
         
         spec = integerise_if_needed(scaler.to_file_units(spec))
 
