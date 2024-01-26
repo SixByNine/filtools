@@ -63,6 +63,11 @@ def ft_inject_pulsar(argv):
     group.add_argument('--npol', type=int, help="Number of polarisations already averaged",default=2)
     group.add_argument('--rms', type=float, help="RMS in input data (default=auto)",default=None)
     group.add_argument('--blocksize', type=int, help="Block size (default=256)",default=256)
+
+    group=parser.add_argument_group('Interference signals')
+    group.add_argument('--rfi-config', type=str, default=None, help='RFI configuration yaml file') 
+
+
     args=parser.parse_args(argv[1:])
 
     print(args)
@@ -126,6 +131,18 @@ def ft_inject_pulsar(argv):
     # Just to re-name the variable for the final model
     inject_model = ism_model
 
+
+    # Set up RFI injection if required
+    rfi_model = None
+    if args.rfi_config:
+        rfi_model = ip.inject_rfi()
+        if rfi_model.configure_db(filename=args.rfi_config, nchans=infile.header['nchans'], fch1=infile.header['fch1'],
+                                     foff=infile.header['foff'],tsamp=infile.header['tsamp']):
+            print('Configuration of RFI blocks completed..')
+        else:
+            print('Oops! Failed to configure RFI blocks\nContinuing without RFI injection')
+            rfi_model = None
+
     # Set up telecsope
 
     rms=args.rms
@@ -174,11 +191,14 @@ def ft_inject_pulsar(argv):
         bin_end = np.repeat(infile.seconds_since(samps+1,mjdref),repeats=infile.total_channels()).reshape(bsamp,-1)
 
         spec = args.flux*inject_model(bin_start,bin_end,mjdref)
+        
+        if rfi_model is not None:
+            #Injecting RFI into the block
+            spec += rfi_model.injector(isamp,bsamp)
 
         spec = integerise_if_needed(scaler.to_file_units(spec))
-
+        
         block += spec
-
         isamp += bsamp
 
         write_block(block)

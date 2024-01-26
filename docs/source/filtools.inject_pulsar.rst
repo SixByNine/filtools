@@ -33,4 +33,11 @@ filtools\.inject\_pulsar\.pulse\_models module
     :undoc-members:
     :show-inheritance:
 
+filtools\.inject\_pulsar\.inject\_rfi module
+----------------------------------------------
+
+..automodule:: filtools.inject_pulsar.inject_rfi
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
