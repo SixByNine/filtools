@@ -63,7 +63,7 @@ class inject_rfi:
         :param bin_start:   Time-sample number of the block that is being worked on
         :returns:   Mask of size same as block with affected channels and time filled with respective magnitude (:math:`\times\sigma`)
         """
-        mask = np.empty((self.nchans,block_length))      #Creating an empty mask (local: clearing up memory)
+        mask = np.zeros((self.nchans,block_length))      #Creating an empty mask (local: clearing up memory)
 
         #Creating a list of RFI chunks that needs to be added in the current block
         rfi_list = np.argwhere(bin_start < self.rfi_end[np.argwhere(self.rfi_begin<bin_start+block_length)])[:,0].T
