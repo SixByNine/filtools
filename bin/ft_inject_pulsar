@@ -194,7 +194,7 @@ def ft_inject_pulsar(argv):
         
         if rfi_model is not None:
             #Injecting RFI into the block
-            spec += rfi_model.injector(isamp,bsamp)
+            spec += scaler.to_flux_units(rfi_model.injector(isamp,bsamp)*rms)
 
         spec = integerise_if_needed(scaler.to_file_units(spec))
         

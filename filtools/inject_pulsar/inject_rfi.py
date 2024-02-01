@@ -44,11 +44,12 @@ class inject_rfi:
                     self.rfi_mag.append(i['mag'])
         
             #Converting the lists to numpy array for easy operation
-            self.rfi_begin = np.array(self.rfi_begin)
-            self.rfi_end = np.array(self.rfi_end)
-            self.rfi_freq_start = np.array(self.rfi_freq_start)
-            self.rfi_freq_stop = np.array(self.rfi_freq_stop)
-            self.rfi_mag = np.array(self.rfi_mag)
+            sorts = np.array(self.rfi_begin).argsort()
+            self.rfi_begin = np.array(self.rfi_begin)[sorts]
+            self.rfi_end = np.array(self.rfi_end)[sorts]
+            self.rfi_freq_start = np.array(self.rfi_freq_start)[sorts]
+            self.rfi_freq_stop = np.array(self.rfi_freq_stop)[sorts]
+            self.rfi_mag = np.array(self.rfi_mag)[sorts]
             
         except:
             return False
@@ -67,7 +68,6 @@ class inject_rfi:
 
         #Creating a list of RFI chunks that needs to be added in the current block
         rfi_list = np.argwhere(bin_start < self.rfi_end[np.argwhere(self.rfi_begin<bin_start+block_length)])[:,0].T
-        
 
         for i in rfi_list:
             #Iterating over the RFI chunks that needs to be injected, adjusting the 'tstart' and 'tstop' in order to fit them within the selected block
