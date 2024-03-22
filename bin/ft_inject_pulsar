@@ -65,7 +65,8 @@ def ft_inject_pulsar(argv):
     group.add_argument('--blocksize', type=int, help="Block size (default=256)",default=256)
 
     group=parser.add_argument_group('Interference signals')
-    group.add_argument('--rfi-config', type=str, default=None, help='RFI configuration yaml file') 
+    group.add_argument('--rfi-config', type=str, default=None, help='RFI configuration yaml file')
+    group.add_argument('--add-signed', action='store_true', help='Set this flag to include parameter [signed] in the output file header')
 
 
     args=parser.parse_args(argv[1:])
@@ -169,6 +170,8 @@ def ft_inject_pulsar(argv):
     # Start working on the ouput file
     ofil=infile.clone_header()
     ofil.write_header(args.output)
+    if not args.add_signed:
+        del ofil.header['signed']   #Strips away the fil.header.signed parameter from the header of the file
     write_block = ofil.get_writer()
 
 
