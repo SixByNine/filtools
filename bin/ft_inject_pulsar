@@ -169,9 +169,9 @@ def ft_inject_pulsar(argv):
 
     # Start working on the ouput file
     ofil=infile.clone_header()
-    ofil.write_header(args.output)
     if not args.add_signed:
         del ofil.header['signed']   #Strips away the fil.header.signed parameter from the header of the file
+    ofil.write_header(args.output)
     write_block = ofil.get_writer()
 
 
