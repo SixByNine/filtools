@@ -1,8 +1,9 @@
 import numpy as np
 import yaml
+import scipy.signal as sp
 class inject_rfi:
 
-    def configure_db(self,filename,nchans,tsamp,fch1,foff):
+    def configure_db(self,filename,nchans,tsamp,fch1,foff,kernel_size=None):
         r"""
         This function will be used to setup the RFI injection configuration with desired nature of RFI. 
         A YAML file containing all the information about RFI is read, samples that are going to be affected are figured out in this function.
@@ -13,6 +14,7 @@ class inject_rfi:
         :param tsamp:   Sampling time
         :param fch1:    Frequency of the first channel
         :param foff:    Frequency resolution or difference in frequency between two channels
+        :param kernel_size: Determines the size of smoothing kernel
         :returns:       True (if code executes successfully) or False (otherwise)
         """
 
@@ -51,6 +53,8 @@ class inject_rfi:
             self.rfi_freq_stop = np.array(self.rfi_freq_stop)[sorts]
             self.rfi_mag = np.array(self.rfi_mag)[sorts]
             
+            if kernel_size is not None and kernel_size!=0:
+                self.kernel = np.ones((kernel_size,kernel_size))
         except:
             return False
 
@@ -79,4 +83,8 @@ class inject_rfi:
             #Fill the entries of affected channel with ones, scaled with respective magnitude
             mask[fstart:fstop,tstart:tstop] += np.ones((fstop-fstart,tstop-tstart)) * self.rfi_mag[i]
         
+        #Smoothing the mask using convolution function
+        mask = sp.convolve2d(mask,self.kernel,mode='same')
+        mask = mask / self.kernel.shape[0]**2       #Dividing by the factor which multiplies during convolution
+
         return mask.T
