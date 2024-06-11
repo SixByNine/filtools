@@ -66,6 +66,7 @@ def ft_inject_pulsar(argv):
 
     group=parser.add_argument_group('Interference signals')
     group.add_argument('--rfi-config', type=str, default=None, help='RFI configuration yaml file')
+    group.add_argument('--rfi-smooth',type=int, default=0, help='Defines the size of kernel to smooth the RFI edges in 2D')
     group.add_argument('--remove-signed', action='store_true', help='Set this flag to remove the signed option from the header of the filterbank file')
 
 
@@ -138,7 +139,7 @@ def ft_inject_pulsar(argv):
     if args.rfi_config:
         rfi_model = ip.inject_rfi()
         if rfi_model.configure_db(filename=args.rfi_config, nchans=infile.header['nchans'], fch1=infile.header['fch1'],
-                                     foff=infile.header['foff'],tsamp=infile.header['tsamp']):
+                                     foff=infile.header['foff'],tsamp=infile.header['tsamp'],kernel_size=args.rfi_smooth):
             print('Configuration of RFI blocks completed..')
         else:
             print('Oops! Failed to configure RFI blocks\nContinuing without RFI injection')
