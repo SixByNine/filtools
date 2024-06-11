@@ -22,6 +22,7 @@ class inject_rfi:
         self.nchans = nchans        
         rfi_file = yaml.safe_load(open(filename))                   #loading the RFI yaml files into list of dictionary
         rfi_file = sorted(rfi_file, key=lambda d: d['tstart'])      #sorting the dictionaries based on 'tstart' of every RFI
+        self.kernel = None
 
         #The elements are sorted because referring to frequency indices would be difficult (some mismatch was observed)
         
@@ -53,8 +54,9 @@ class inject_rfi:
             self.rfi_freq_stop = np.array(self.rfi_freq_stop)[sorts]
             self.rfi_mag = np.array(self.rfi_mag)[sorts]
             
+            #Creating a kernel with unity total weight that will be used to smoothen the RFI mask
             if kernel_size is not None and kernel_size!=0:
-                self.kernel = np.ones((kernel_size,kernel_size))
+                self.kernel = np.ones((kernel_size,kernel_size))/kernel_size**2
         except:
             return False
 
@@ -84,7 +86,7 @@ class inject_rfi:
             mask[fstart:fstop,tstart:tstop] += np.ones((fstop-fstart,tstop-tstart)) * self.rfi_mag[i]
         
         #Smoothing the mask using convolution function
-        mask = sp.convolve2d(mask,self.kernel,mode='same')
-        mask = mask / self.kernel.shape[0]**2       #Dividing by the factor which multiplies during convolution
+        if self.kernel is not None:
+            mask = sp.convolve2d(mask,self.kernel,mode='same')
 
         return mask.T
