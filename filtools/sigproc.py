@@ -188,6 +188,11 @@ class FilterbankIO:
         """Get the MJD at given sample number"""
         return self.header['tstart'] + (sample * self.header['tsamp'])/86400.0
     
+    @_check_modifiable
+    def set_mjd_at_start(self,mjd):
+        """Set the MJD at the start of the observation."""
+        self.header['tstart'] = mjd
+    
     def frequency_table(self):
         """Get an array of centre frequency of each channel"""
         return np.linspace(self.header['fch1'],self.header['fch1'] + self.header['nchans']*self.header['foff'],self.header['nchans'],endpoint=False)
