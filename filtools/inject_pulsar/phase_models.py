@@ -130,19 +130,19 @@ class predictor_phase_model:
         if self.mjdref==None:
             self.mjdref=mjdref
             self.tstart=np.amin(time)
-            t = np.linspace(self.tstart,self.tstart+self.default_tspan,self.default_tspan/self.dt,endpoint=True)
+            t = np.linspace(self.tstart,self.tstart+self.default_tspan,int(round(self.default_tspan/self.dt)),endpoint=True)
             self.tend=t[-1]
             self.pp = self.make_poly(t)
 
         time += (mjdref-self.mjdref)*86400.0
         while np.amin(time) < self.tstart:
             self.tstart -= self.default_tspan
-            t = np.linspace(self.tstart,self.tstart+self.default_tspan,self.default_tspan/self.dt,endpoint=True)
+            t = np.linspace(self.tstart,self.tstart+self.default_tspan,int(round(self.default_tspan/self.dt)),endpoint=True)
             pp = self.make_poly(t)
             self.pp.extend(pp.c,pp.x[:-1])
         while np.amax(time) > self.tend:
             self.tend += self.default_tspan
-            t = np.linspace(self.tend-self.default_tspan,self.tend,self.default_tspan/self.dt,endpoint=True)
+            t = np.linspace(self.tend-self.default_tspan,self.tend,int(round(self.default_tspan/self.dt)),endpoint=True)
             pp = self.make_poly(t)
             self.pp.extend(pp.c,pp.x[1:])
         return self.pp(time)
