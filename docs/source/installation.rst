@@ -4,21 +4,21 @@ Installation
 
 filtools can be installed using pip::
 
-   pip install git+https://bitbucket.org/mkeith/filtools
+   pip install git+=https://github.com/SixByNine/filtools
 
 
 Or directly by downloading the git repository::
    
-   git clone https://bitbucket.org/mkeith/filtools
+   git clone hhttps://github.com/SixByNine/filtools
    cd filtools
    python setup.py install
 
-The git repository can be viewed at https://bitbucket.org/mkeith/filtools   
+The git repository can be viewed at https://github.com/SixByNine/filtools
 
 Requirements
 ------------
 
- * Python 2.7 or 3.6+
+ * 3.6+
  * numpy
  * yaml
 
